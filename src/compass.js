@@ -39,7 +39,7 @@ const simulation = d3
       return;
     }
 
-    const k = alpha * 3; // Strength of the force, adjust as needed
+    const k = alpha * 5; // Strength of the force, adjust as needed
     for (let i = 0, n = nodes.length; i < n; ++i) {
       let node = nodes[i];
 
@@ -82,7 +82,6 @@ const triangle = svg
       })
       .join(" ")
   )
-  .attr("fill", "white")
   .attr("opacity", 0.5);
 
 const link = svg
@@ -162,40 +161,27 @@ document.addEventListener("mousemove", (event) => {
 
   closeNodes.clear();
   mouse = null;
-  if (event.target.tagName !== "polygon") {
-    return;
-  }
 
   const x = event.clientX - document.body.clientWidth / 2;
   const y = event.clientY - document.body.clientHeight / 2;
 
   mouse = { x, y };
 
-  // Array to keep track of the three closest nodes
-  let closestNodes = [
-    { node: null, dist: Infinity },
-    { node: null, dist: Infinity },
-    { node: null, dist: Infinity },
-  ];
-
-  nodes.forEach((node) => {
-    const distance = Math.pow(x - node.x, 2) + Math.pow(y - node.y, 2);
-
-    // Check against the three distances
-    for (let i = 0; i < 3; i++) {
-      if (distance < closestNodes[i].dist) {
-        closestNodes.splice(i, 0, { node: node, dist: distance }); // Insert before smaller element
-        closestNodes.pop(); // Keep the array length to 3
-        break;
-      }
-    }
-  });
-
   closeNodes.clear();
 
-  closestNodes.forEach(({ node }) => {
-    closeNodes.add(node.id);
+  const hoveredTriangle = triangles.find((nodeIds) => {
+    const node1 = nodesById[nodeIds[0]];
+    const node2 = nodesById[nodeIds[1]];
+    const node3 = nodesById[nodeIds[2]];
+
+    return pointInTriangle(mouse, node1, node2, node3);
   });
 
-  node.attr("fill", ({ id }) => (closeNodes.has(id) ? "red" : "white"));
+  if (hoveredTriangle) {
+    hoveredTriangle.forEach((nodeId) => {
+      closeNodes.add(nodeId);
+    });
+  }
+
+  triangle.attr("class", (t) => (t === hoveredTriangle ? "active" : ""));
 });

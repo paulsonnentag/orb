@@ -6,3 +6,7 @@ body {
 line {
   filter: drop-shadow(0 0 white) 
 }
+
+.active {
+  fill: red;
+}
