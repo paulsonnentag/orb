@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 import graph from "./graph.json";
-import { findTriangles } from "./graph";
+import { findTriangles, pointInTriangle } from "./utils";
 
 const { nodes, links } = graph;
 const nodesById = {};
@@ -11,14 +11,9 @@ nodes.forEach((node) => {
 
 const triangles = findTriangles(graph);
 
-console.log(triangles);
-
 // Specify the dimensions of the chart.
 const width = window.innerWidth;
 const height = window.innerHeight;
-
-// Specify the color scale.
-const color = d3.scaleOrdinal(d3.schemeCategory10);
 
 // The force simulation mutates links and nodes, so create a copy
 // so that re-evaluating this cell produces the same result.
@@ -36,9 +31,35 @@ const simulation = d3
       })
       .strength(0.1)
   )
-  .force("charge", d3.forceManyBody())
+  .force("charge", d3.forceManyBody().strength(-100))
   .force("x", d3.forceX())
-  .force("y", d3.forceY());
+  .force("y", d3.forceY())
+  .force("pushAway", (alpha) => {
+    if (!mouse) {
+      return;
+    }
+
+    const k = alpha * 3; // Strength of the force, adjust as needed
+    for (let i = 0, n = nodes.length; i < n; ++i) {
+      let node = nodes[i];
+
+      // Check if the current node is in the specified set
+      if (closeNodes.has(node.id)) {
+        // Calculate the displacement from the node to the point
+        const dx = node.x - mouse.x;
+        const dy = node.y - mouse.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Normalize the displacement vector and apply the force
+        if (distance > 0) {
+          // To avoid division by zero
+          const force = k / distance; // Calculate force magnitude
+          node.vx += dx * force; // Apply force in the x direction
+          node.vy += dy * force; // Apply force in the y direction
+        }
+      }
+    }
+  });
 
 // Create the SVG container.
 const svg = d3
@@ -80,7 +101,7 @@ const node = svg
   .selectAll("circle")
   .data(nodes)
   .join("circle")
-  .attr("r", 10)
+  .attr("r", 5)
   .attr("fill", "transparent");
 
 // Add a drag behavior.
@@ -130,3 +151,51 @@ function dragended(event) {
 }
 
 document.body.append(svg.node());
+
+let closeNodes = new Set();
+let mouse;
+
+document.addEventListener("mousemove", (event) => {
+  if (!simulation.active) {
+    simulation.alphaTarget(0.3).restart();
+  }
+
+  closeNodes.clear();
+  mouse = null;
+  if (event.target.tagName !== "polygon") {
+    return;
+  }
+
+  const x = event.clientX - document.body.clientWidth / 2;
+  const y = event.clientY - document.body.clientHeight / 2;
+
+  mouse = { x, y };
+
+  // Array to keep track of the three closest nodes
+  let closestNodes = [
+    { node: null, dist: Infinity },
+    { node: null, dist: Infinity },
+    { node: null, dist: Infinity },
+  ];
+
+  nodes.forEach((node) => {
+    const distance = Math.pow(x - node.x, 2) + Math.pow(y - node.y, 2);
+
+    // Check against the three distances
+    for (let i = 0; i < 3; i++) {
+      if (distance < closestNodes[i].dist) {
+        closestNodes.splice(i, 0, { node: node, dist: distance }); // Insert before smaller element
+        closestNodes.pop(); // Keep the array length to 3
+        break;
+      }
+    }
+  });
+
+  closeNodes.clear();
+
+  closestNodes.forEach(({ node }) => {
+    closeNodes.add(node.id);
+  });
+
+  node.attr("fill", ({ id }) => (closeNodes.has(id) ? "red" : "white"));
+});
