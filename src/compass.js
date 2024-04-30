@@ -1,6 +1,17 @@
 import * as d3 from "d3";
 
 import graph from "./graph.json";
+import { findTriangles } from "./graph";
+
+const { nodes, links } = graph;
+const nodesById = {};
+nodes.forEach((node) => {
+  nodesById[node.id] = node;
+});
+
+const triangles = findTriangles(graph);
+
+console.log(triangles);
 
 // Specify the dimensions of the chart.
 const width = window.innerWidth;
@@ -11,8 +22,6 @@ const color = d3.scaleOrdinal(d3.schemeCategory10);
 
 // The force simulation mutates links and nodes, so create a copy
 // so that re-evaluating this cell produces the same result.
-const links = graph.links.map((d) => ({ ...d }));
-const nodes = graph.nodes.map((d) => ({ ...d }));
 
 // Create a simulation with several forces.
 const simulation = d3
@@ -39,7 +48,22 @@ const svg = d3
   .attr("viewBox", [-width / 2, -height / 2, width, height])
   .attr("style", "max-width: 100%; height: auto;");
 
-// Add a line for each link, and a circle for each node.
+const triangle = svg
+  .append("g")
+  .selectAll("polygon")
+  .data(triangles)
+  .join("polygon")
+  .attr("points", (nodeIds) =>
+    nodeIds
+      .map((id) => {
+        const node = nodesById[id];
+        return `${node.x},${node.y}`;
+      })
+      .join(" ")
+  )
+  .attr("fill", "white")
+  .attr("opacity", 0.5);
+
 const link = svg
   .append("g")
   .attr("stroke", "#fff")
@@ -59,8 +83,6 @@ const node = svg
   .attr("r", 10)
   .attr("fill", "transparent");
 
-node.append("title").text((d) => d.id);
-
 // Add a drag behavior.
 node.call(
   d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended)
@@ -75,6 +97,15 @@ simulation.on("tick", () => {
     .attr("y2", (d) => d.target.y);
 
   node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+
+  triangle.attr("points", (nodeIds) =>
+    nodeIds
+      .map((id) => {
+        const node = nodesById[id];
+        return `${node.x},${node.y}`;
+      })
+      .join(" ")
+  );
 });
 
 // Reheat the simulation when drag starts, and fix the subject position.
