@@ -1,6 +1,49 @@
 import * as d3 from "d3";
 
-import graph from "./data.json";
+//import graph from "./data.json";
+
+let nextId = 0;
+const getId = () => {
+  return nextId++;
+};
+
+const getGraph = () => {
+  const nodes = [];
+  const links = [];
+
+  const centerNode = { id: getId() };
+  nodes.push(centerNode);
+
+  let previousNode;
+  let firstNode;
+  let n = 6;
+  let angle = (Math.PI * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const currentAngle = angle * i;
+    const node = {
+      id: getId(),
+      x: Math.cos(currentAngle) * 10,
+      y: Math.sin(currentAngle) * 10,
+    };
+
+    nodes.push(node);
+    links.push({ source: centerNode.id, target: node.id });
+    if (previousNode) {
+      links.push({ source: previousNode.id, target: node.id, distance: 20 });
+    }
+    if (i == 5) {
+      links.push({ source: firstNode.id, target: node.id, distance: 20 });
+    }
+    if (i == 0) {
+      firstNode = node;
+    }
+    previousNode = node;
+  }
+
+  return { nodes, links };
+};
+
+const graph = getGraph();
 
 // Specify the dimensions of the chart.
 const width = 928;
@@ -19,7 +62,11 @@ const simulation = d3
   .forceSimulation(nodes)
   .force(
     "link",
-    d3.forceLink(links).id((d) => d.id)
+    d3
+      .forceLink(links)
+      .id((d) => d.id)
+      //      .distance((d) => d.distance)
+      .strength(0.1)
   )
   .force("charge", d3.forceManyBody())
   .force("x", d3.forceX())
@@ -43,7 +90,7 @@ const link = svg
   .join("line")
   .attr("stroke-width", (d) => Math.sqrt(d.value));
 
-const node = svg
+/* const node = svg
   .append("g")
   .attr("stroke", "#fff")
   .attr("stroke-width", 1.5)
@@ -51,14 +98,14 @@ const node = svg
   .data(nodes)
   .join("circle")
   .attr("r", 5)
-  .attr("fill", (d) => color(d.group));
+  .attr("fill", (d) => color(d.group)); */
 
-node.append("title").text((d) => d.id);
+// node.append("title").text((d) => d.id);
 
 // Add a drag behavior.
-node.call(
+/* node.call(
   d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended)
-);
+); */
 
 // Set the position attributes of links and nodes each time the simulation ticks.
 simulation.on("tick", () => {
@@ -68,7 +115,7 @@ simulation.on("tick", () => {
     .attr("x2", (d) => d.target.x)
     .attr("y2", (d) => d.target.y);
 
-  node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+  //node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
 });
 
 // Reheat the simulation when drag starts, and fix the subject position.
