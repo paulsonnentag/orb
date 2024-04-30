@@ -156,7 +156,7 @@ function dragended(event) {
   event.subject.fy = null;
 }
 
-document.body.append(svg.node());
+document.getElementById("root").append(svg.node());
 
 let closeNodes = new Set();
 let focusPoint;
@@ -195,6 +195,8 @@ const setFocusPoint = (x, y) => {
 
   triangle.attr("class", (t) => (t === highlightedTriangle ? "active" : ""));
 };
+
+const onChangeGeoPosition = (event) => {};
 
 const onChangeDeviceOrientation = (event) => {
   const angle = (event.alpha / 180) * Math.PI;
@@ -240,6 +242,30 @@ function initDeviceOrientation() {
     }
   } else {
     console.log("DeviceOrientationEvent is not supported by this browser.");
+  }
+}
+
+// Function to continuously get the geo position
+function watchGeoPosition() {
+  if ("geolocation" in navigator) {
+    // Check if geolocation is available
+    navigator.geolocation.watchPosition(
+      (position) => {
+        // On success, call the callback with the position data
+        onChangeGeoPosition(position);
+      },
+      (error) => {
+        // On error, log the error
+        console.error("Error getting geolocation: ", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+  } else {
+    console.log("Geolocation is not supported by this browser.");
   }
 }
 
