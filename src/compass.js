@@ -41,19 +41,19 @@ const simulation = d3
   .force("x", d3.forceX())
   .force("y", d3.forceY())
   .force("pushAway", (alpha) => {
-    if (!mouse) {
+    if (!focusPoint) {
       return;
     }
 
-    const k = alpha * 3; // Strength of the force, adjust as needed
+    const k = alpha * Math.sin(Date.now() / 500) * 3; // Strength of the force, adjust as needed
     for (let i = 0, n = nodes.length; i < n; ++i) {
       let node = nodes[i];
 
       // Check if the current node is in the specified set
       if (closeNodes.has(node.id)) {
         // Calculate the displacement from the node to the point
-        const dx = node.x - mouse.x;
-        const dy = node.y - mouse.y;
+        const dx = node.x - focusPoint.x;
+        const dy = node.y - focusPoint.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Normalize the displacement vector and apply the force
@@ -93,6 +93,7 @@ const triangle = svg
 const link = svg
   .append("g")
   .attr("stroke", "#fff")
+  .attr("stroke-width", 2)
   .attr("stroke-opacity", 0.6)
   .selectAll("line")
   .data(links)
@@ -158,34 +159,34 @@ function dragended(event) {
 document.body.append(svg.node());
 
 let closeNodes = new Set();
-let mouse;
+let focusPoint;
 
 document.addEventListener("mousemove", (event) => {
+  const x = event.clientX - document.body.clientWidth / 2;
+  const y = event.clientY - document.body.clientHeight / 2;
+
+  setFocusPoint(x, y);
+});
+
+const setFocusPoint = (x, y) => {
   if (!simulation.active) {
     simulation.alphaTarget(0.3).restart();
   }
 
   closeNodes.clear();
-  mouse = null;
-
-  const x = event.clientX - document.body.clientWidth / 2;
-  const y = event.clientY - document.body.clientHeight / 2;
-
-  mouse = { x, y };
-
-  closeNodes.clear();
+  focusPoint = { x, y };
 
   let highlightedTriangle = triangles.find((nodeIds) => {
     const node1 = nodesById[nodeIds[0]];
     const node2 = nodesById[nodeIds[1]];
     const node3 = nodesById[nodeIds[2]];
 
-    return pointInTriangle(mouse, node1, node2, node3);
+    return pointInTriangle(focusPoint, node1, node2, node3);
   });
 
   if (!highlightedTriangle) {
-    highlightedTriangle = getClosestTriangle(triangles, nodesById, mouse);
-    mouse = getCentroid(highlightedTriangle, nodesById);
+    highlightedTriangle = getClosestTriangle(triangles, nodesById, focusPoint);
+    focusPoint = getCentroid(highlightedTriangle, nodesById);
   }
 
   highlightedTriangle.forEach((nodeId) => {
@@ -193,4 +194,55 @@ document.addEventListener("mousemove", (event) => {
   });
 
   triangle.attr("class", (t) => (t === highlightedTriangle ? "active" : ""));
+};
+
+const onChangeDeviceOrientation = (event) => {
+  const angle = (event.alpha / 180) * Math.PI;
+
+  const x = Math.cos(angle) * 100;
+  const y = Math.sin(angle) * 100;
+
+  console.log(x, y);
+
+  setFocusPoint(x, y);
+};
+
+function initDeviceOrientation() {
+  console.log("Initialization started");
+
+  // Check if DeviceOrientationEvent is available in the window object
+  if (typeof DeviceOrientationEvent !== "undefined") {
+    // Check if permission is needed for DeviceOrientationEvent (iOS 13+)
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      console.log("Requesting permission for DeviceOrientation");
+
+      // Request permission
+      DeviceOrientationEvent.requestPermission()
+        .then((permissionState) => {
+          if (permissionState === "granted") {
+            // Permission granted
+            console.log("Permission granted for DeviceOrientation");
+
+            // Add event listener if permission granted
+            window.addEventListener(
+              "deviceorientation",
+              onChangeDeviceOrientation
+            );
+          } else {
+            // Permission denied
+            console.log("Permission denied for DeviceOrientation");
+          }
+        })
+        .catch(console.error); // Handle potential errors in requesting permission
+    } else {
+      // Permissions API not needed, just add event listener
+      window.addEventListener("deviceorientation", onChangeDeviceOrientation);
+    }
+  } else {
+    console.log("DeviceOrientationEvent is not supported by this browser.");
+  }
+}
+
+document.addEventListener("click", () => {
+  initDeviceOrientation();
 });
