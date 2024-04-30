@@ -3,8 +3,8 @@ import * as d3 from "d3";
 import graph from "./graph.json";
 
 // Specify the dimensions of the chart.
-const width = 928;
-const height = 680;
+const width = window.innerWidth;
+const height = window.innerHeight;
 
 // Specify the color scale.
 const color = d3.scaleOrdinal(d3.schemeCategory10);
@@ -23,7 +23,7 @@ const simulation = d3
       .forceLink(links)
       .id((d) => d.id)
       .distance((d, index) => {
-        return 20;
+        return 30;
       })
       .strength(0.1)
   )
@@ -42,7 +42,7 @@ const svg = d3
 // Add a line for each link, and a circle for each node.
 const link = svg
   .append("g")
-  .attr("stroke", "#999")
+  .attr("stroke", "#fff")
   .attr("stroke-opacity", 0.6)
   .selectAll("line")
   .data(links)
@@ -51,13 +51,13 @@ const link = svg
 
 const node = svg
   .append("g")
-  .attr("stroke", "#fff")
-  .attr("stroke-width", 1.5)
+  //  .attr("stroke", "#fff")
+  //  .attr("stroke-width", 1.5)
   .selectAll("circle")
   .data(nodes)
   .join("circle")
-  .attr("r", 5)
-  .attr("fill", (d) => color(d.group));
+  .attr("r", 10)
+  .attr("fill", "transparent");
 
 node.append("title").text((d) => d.id);
 
