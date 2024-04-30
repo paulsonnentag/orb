@@ -7,6 +7,10 @@ line {
   filter: drop-shadow(0 0 white) 
 }
 
-.active {
+polygon {
+  transition: fill 200ms ease-in;
+}
+
+polygon.active {
   fill: red;
 }

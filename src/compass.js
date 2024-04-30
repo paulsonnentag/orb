@@ -1,7 +1,13 @@
 import * as d3 from "d3";
 
 import graph from "./graph.json";
-import { findTriangles, pointInTriangle } from "./utils";
+import {
+  findTriangles,
+  pointInTriangle,
+  getClosestTriangle,
+  getOuterNodes,
+  getCentroid,
+} from "./utils";
 
 const { nodes, links } = graph;
 const nodesById = {};
@@ -39,7 +45,7 @@ const simulation = d3
       return;
     }
 
-    const k = alpha * 5; // Strength of the force, adjust as needed
+    const k = alpha * 3; // Strength of the force, adjust as needed
     for (let i = 0, n = nodes.length; i < n; ++i) {
       let node = nodes[i];
 
@@ -169,7 +175,7 @@ document.addEventListener("mousemove", (event) => {
 
   closeNodes.clear();
 
-  const hoveredTriangle = triangles.find((nodeIds) => {
+  let highlightedTriangle = triangles.find((nodeIds) => {
     const node1 = nodesById[nodeIds[0]];
     const node2 = nodesById[nodeIds[1]];
     const node3 = nodesById[nodeIds[2]];
@@ -177,11 +183,14 @@ document.addEventListener("mousemove", (event) => {
     return pointInTriangle(mouse, node1, node2, node3);
   });
 
-  if (hoveredTriangle) {
-    hoveredTriangle.forEach((nodeId) => {
-      closeNodes.add(nodeId);
-    });
+  if (!highlightedTriangle) {
+    highlightedTriangle = getClosestTriangle(triangles, nodesById, mouse);
+    mouse = getCentroid(highlightedTriangle, nodesById);
   }
 
-  triangle.attr("class", (t) => (t === hoveredTriangle ? "active" : ""));
+  highlightedTriangle.forEach((nodeId) => {
+    closeNodes.add(nodeId);
+  });
+
+  triangle.attr("class", (t) => (t === highlightedTriangle ? "active" : ""));
 });

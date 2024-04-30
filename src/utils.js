@@ -46,3 +46,60 @@ export function pointInTriangle(pt, v1, v2, v3) {
 
   return !(hasNeg && hasPos);
 }
+
+export const getClosestTriangle = (triangles, nodesById, point) => {
+  let closestTriangle = null;
+  let minDistance = Infinity;
+
+  for (const triangle of triangles) {
+    const centroid = getCentroid(triangle, nodesById);
+
+    // Calculate the distance from the centroid to the point
+    const distance = Math.sqrt(
+      (centroid.x - point.x) ** 2 + (centroid.y - point.y) ** 2
+    );
+
+    // Update the closest triangle if the current distance is smaller
+    if (distance < minDistance) {
+      closestTriangle = triangle;
+      minDistance = distance;
+    }
+  }
+
+  return closestTriangle;
+};
+
+export const getCentroid = (triangle, nodesById) => {
+  const vertices = triangle.map((nodeId) => nodesById[nodeId]);
+
+  // Calculate the centroid of the triangle
+  return {
+    x: (vertices[0].x + vertices[1].x + vertices[2].x) / 3,
+    y: (vertices[0].y + vertices[1].y + vertices[2].y) / 3,
+  };
+};
+
+export const getOuterNodes = (graph) => {
+  // Initialize a map to count the occurrences of each node in the links
+  const linkCount = new Map();
+
+  // Count each occurrence of a node either as a source or a target in the links
+  graph.links.forEach((link) => {
+    linkCount.set(link.source, (linkCount.get(link.source) || 0) + 1);
+    linkCount.set(link.target, (linkCount.get(link.target) || 0) + 1);
+  });
+
+  // Find nodes with exactly four links
+  const nodesWithFourLinks = [];
+  linkCount.forEach((count, nodeId) => {
+    if (count === 4) {
+      // Find the node details from the nodes array using the id
+      const nodeDetails = graph.nodes.find((node) => node.id === nodeId);
+      if (nodeDetails) {
+        nodesWithFourLinks.push(nodeDetails);
+      }
+    }
+  });
+
+  return nodesWithFourLinks;
+};
