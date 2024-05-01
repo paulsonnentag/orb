@@ -1,9 +1,7 @@
 import { Graph } from "./graph";
 
-const GRAVITY_CONSTANT = 0.01;
-const FORCE_CONSTANT = 500;
-
-const MAX_DISTANCE = window.innerWidth / 500;
+const GRAVITY_CONSTANT = 0.1;
+const FORCE_CONSTANT = window.innerWidth * 0.5;
 
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
@@ -32,7 +30,7 @@ export const applyForces = ({ nodes, links }: Graph) => {
     const node2 = link.to;
     const distance = node1.position.copy().sub(node2.position);
     const distanceMagnitude = distance.mag();
-    const diff = distanceMagnitude - MAX_DISTANCE;
+    const diff = distanceMagnitude - 10;
     const unitDistance = distance.copy().divScalar(distanceMagnitude);
     const force = unitDistance.multScalar(diff * 0.1);
 
@@ -46,25 +44,3 @@ export const applyForces = ({ nodes, links }: Graph) => {
     node.position.add(vel);
   }
 };
-
-/*
-
-class Node {
-  constructor(pos, size) {
-    this.pos = pos;
-    this.force = createVector(0, 0);
-    this.mass = (2 * PI * size) / 1.5;
-  }
-
-  update() {
-    var force = this.force.copy();
-    var vel = force.copy().div(this.mass);
-    this.pos.add(vel);
-  }
-
-  draw() {
-    ellipse(this.pos.x, this.pos.y, this.mass, this.mass);
-  }
-}
-
-*/
