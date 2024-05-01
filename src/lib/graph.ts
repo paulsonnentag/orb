@@ -15,24 +15,24 @@ export const findTriangles = ({ nodes, links }: Graph): Triangle[] => {
   // Convert the list of links into an adjacency list
   const adjacencyList = new Map<number, Set<number>>();
   links.forEach((link) => {
-    if (!adjacencyList.has(link.source)) {
-      adjacencyList.set(link.source, new Set());
+    if (!adjacencyList.has(link.from.id)) {
+      adjacencyList.set(link.from.id, new Set());
     }
-    if (!adjacencyList.has(link.target)) {
-      adjacencyList.set(link.target, new Set());
+    if (!adjacencyList.has(link.to.id)) {
+      adjacencyList.set(link.to.id, new Set());
     }
-    adjacencyList.get(link.source)!.add(link.target);
-    adjacencyList.get(link.target)!.add(link.source);
+    adjacencyList.get(link.from.id)!.add(link.from.id);
+    adjacencyList.get(link.to.id)!.add(link.to.id);
   });
 
   // Find all triangles
   const triangles = new Set<string>();
   links.forEach((link) => {
-    const { source, target } = link;
+    const { from, to } = link;
     // Check for mutual neighbors of source and target
-    adjacencyList.get(source)!.forEach((neighbor) => {
-      if (adjacencyList.get(target)!.has(neighbor)) {
-        let nodeIds = [source, target, neighbor].sort();
+    adjacencyList.get(from.id)!.forEach((neighbor) => {
+      if (adjacencyList.get(to.id)!.has(neighbor)) {
+        let nodeIds = [from.id, to.id, neighbor].sort();
         triangles.add(JSON.stringify(nodeIds)); // Use JSON stringify to handle unique checks
       }
     });

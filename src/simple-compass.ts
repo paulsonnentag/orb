@@ -3,6 +3,7 @@ import { Vec2d, Graph, Node, Link } from "./lib/graph";
 import { applyForces } from "./lib/force-layout";
 
 // SETUP CANVAS
+
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let width: number;
@@ -26,6 +27,7 @@ window.addEventListener("resize", resize);
 resize();
 
 // SETUP GRAPH
+
 const nodes: Node[] = rawGraph.nodes.map(({ x, y, id }) => ({
   id,
   position: new Vec2d((x - 0.5) * width, (y - 0.5) * width),
@@ -47,9 +49,12 @@ const graph: Graph = {
   links,
 };
 
+// RENDER
+
 function render() {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = "#fff";
   ctx.translate(width / 2, height / 2);
 
   links.forEach(({ from, to }) => {
