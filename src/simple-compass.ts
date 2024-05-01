@@ -129,23 +129,21 @@ function render() {
           destination: source.screenPosition,
         });
       }
+      ctx.beginPath();
+      const radius = Math.max(0, 20 - Math.sqrt(source.distance));
+      ctx.arc(
+        source.screenPosition.x,
+        source.screenPosition.y,
+        radius,
+        0,
+        2 * Math.PI,
+        false
+      );
+      ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
+      ctx.fill();
     }
-
-    ctx.beginPath();
-    const radius = Math.max(0, 20 - Math.sqrt(source.distance));
-    ctx.arc(
-      source.screenPosition.x,
-      source.screenPosition.y,
-      radius,
-      0,
-      2 * Math.PI,
-      false
-    );
-    ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
-    ctx.fill();
   });
 
-  /*
   for (const triangle of trianglesWithSound) {
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
@@ -154,7 +152,7 @@ function render() {
     ctx.closePath();
     ctx.fillStyle = "red";
     ctx.fill();
-  } */
+  }
 
   links.forEach(({ from, to }) => {
     ctx.beginPath();
