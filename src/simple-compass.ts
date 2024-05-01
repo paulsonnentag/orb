@@ -8,7 +8,7 @@ import {
   Triangle,
   pointInTriangle,
 } from "./lib/graph";
-import { applyForces } from "./lib/force-layout";
+import { applyForces, PullForce } from "./lib/force-layout";
 import {
   addDeviceOrientationListener,
   addGeoPositionWatcher,
@@ -92,6 +92,8 @@ if (canvasElement) {
 
 function render() {
   let trianglesWithSound: Triangle[] = [];
+  let soundSourcesInDome: GeoSoundSource[] = [];
+  let forces: PullForce[] = [];
 
   ctx.save();
   ctx.clearRect(0, 0, width, height);
@@ -104,23 +106,46 @@ function render() {
       pointInTriangle(source.screenPosition, triangle)
     );
 
+    let closestNode = null;
     if (triangle) {
       trianglesWithSound.push(triangle);
+      soundSourcesInDome.push(source);
     } else {
-      ctx.beginPath();
-      ctx.arc(
-        source.screenPosition.x,
-        source.screenPosition.y,
-        Math.max(0, 20 - Math.sqrt(source.distance)),
-        0,
-        2 * Math.PI,
-        false
-      );
-      ctx.fillStyle = "red";
-      ctx.fill();
+      let minDistance = 20;
+      nodes.forEach((node) => {
+        const distance = Math.sqrt(
+          (source.screenPosition.x - node.position.x) ** 2 +
+            (source.screenPosition.y - node.position.y) ** 2
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestNode = node;
+        }
+      });
+
+      if (closestNode) {
+        forces.push({
+          node: closestNode,
+          destination: source.screenPosition,
+        });
+      }
     }
+
+    ctx.beginPath();
+    const radius = Math.max(0, 20 - Math.sqrt(source.distance));
+    ctx.arc(
+      source.screenPosition.x,
+      source.screenPosition.y,
+      radius,
+      0,
+      2 * Math.PI,
+      false
+    );
+    ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
+    ctx.fill();
   });
 
+  /*
   for (const triangle of trianglesWithSound) {
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
@@ -129,7 +154,7 @@ function render() {
     ctx.closePath();
     ctx.fillStyle = "red";
     ctx.fill();
-  }
+  } */
 
   links.forEach(({ from, to }) => {
     ctx.beginPath();
@@ -140,7 +165,7 @@ function render() {
 
   ctx.restore();
 
-  applyForces(graph, triangles, soundSources);
+  applyForces(graph, forces);
   requestAnimationFrame(render);
 }
 

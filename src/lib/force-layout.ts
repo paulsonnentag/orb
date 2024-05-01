@@ -1,4 +1,4 @@
-import { Graph, Triangle } from "./graph";
+import { Graph, Vec2d, Node } from "./graph";
 import { GeoSoundSource } from "./sound-source";
 
 const GRAVITY_CONSTANT = 0.1;
@@ -6,11 +6,12 @@ const FORCE_CONSTANT = window.innerWidth * 0.5;
 
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
-export const applyForces = (
-  { nodes, links }: Graph,
-  triangles: Triangle[],
-  soundSources: GeoSoundSource[]
-) => {
+export type PullForce = {
+  node: Node;
+  destination: Vec2d;
+};
+
+export const applyForces = ({ nodes, links }: Graph, forces: PullForce[]) => {
   // apply force towards centre
   nodes.forEach((node) => {
     const gravity = node.position.copy().multScalar(-1 * GRAVITY_CONSTANT);
@@ -41,6 +42,15 @@ export const applyForces = (
 
     node1.force.sub(force);
     node2.force.add(force);
+  }
+
+  // apply pull forces
+  for (const { node, destination } of forces) {
+    const direction = destination.copy().sub(node.position);
+    const distanceMagnitude = direction.mag();
+    const unitDirection = direction.copy().divScalar(distanceMagnitude);
+    const pullForce = unitDirection.multScalar(FORCE_CONSTANT * 0.01);
+    node.force.add(pullForce);
   }
 
   // update position of nodes
