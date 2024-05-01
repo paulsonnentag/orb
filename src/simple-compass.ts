@@ -18,6 +18,7 @@ import {
   getSurroundingSoundSources,
   GeoSoundSource,
 } from "./lib/sound-source";
+import { AudioAPI, main as initAudioApi } from "./sound/app";
 
 // GLOBAL STATE
 
@@ -90,7 +91,9 @@ if (canvasElement) {
   console.error("Element with id 'canvas' not found");
 }
 
-function render() {
+function tick() {
+  audioApi.tick(Date.now() / 1000);
+
   let trianglesWithSound: Triangle[] = [];
   let soundSourcesInDome: GeoSoundSource[] = [];
   let forces: PullForce[] = [];
@@ -144,6 +147,12 @@ function render() {
     }
   });
 
+  // update locations in sound api
+  audioApi.pois = soundSourcesInDome.map((source) => ({
+    lat: source.geoPosition.lat,
+    lon: source.geoPosition.lng,
+  }));
+
   for (const triangle of trianglesWithSound) {
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
@@ -164,13 +173,12 @@ function render() {
   ctx.restore();
 
   applyForces(graph, forces);
-  requestAnimationFrame(render);
+  requestAnimationFrame(tick);
 }
-
-render();
 
 // EVENTS
 
+let audioApi: AudioAPI;
 let angle: number = 0;
 let geoPosition: GeoPosition = {
   lat: 50.7753,
@@ -185,8 +193,10 @@ const updateSoundSources = () => {
 updateSoundSources();
 
 document.body.addEventListener(
-  "click",
+  "pointerup",
   () => {
+    document.getElementById("intro").remove();
+
     addDeviceOrientationListener((event) => {
       angle = -event.alpha;
       updateSoundSources();
@@ -198,6 +208,9 @@ document.body.addEventListener(
         lng: newGeoPosition.coords.longitude,
       };
     });
+
+    audioApi = initAudioApi();
+    tick();
   },
   { once: true }
 );

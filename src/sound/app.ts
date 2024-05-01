@@ -1,79 +1,77 @@
-import * as audio from "./audio";
-import * as math from "./math";
+import * as audio from "./audio"
+import * as math from "./math"
 
-// Globals for canvas rendering
-const canvas = document.createElement("canvas"); //document.querySelector("canvas");
-const ctx = canvas.getContext("2d");
-let width = window.innerWidth;
-let height = window.innerHeight;
+const waveCoefficients = 4
+const real = new Float32Array(waveCoefficients)
+const imag = new Float32Array(waveCoefficients)
 
-canvas.style.position = "absolute";
-canvas.style.top = "0";
-canvas.style.right = "0";
-canvas.style.width = "100%";
-canvas.style.height = "100%";
-document.body.append(canvas);
+const root = 1
+const min2 = 256 / 243
+const maj2 = 9 / 8
+const min3 = 32 / 27
+const maj3 = 81 / 64
+const fourth = 4 / 3
+const dim5 = 1024 / 729
+const fifth = 3 / 2
+const min6 = 128 / 81
+const maj6 = 27 / 16
+const min7 = 16 / 9
+const maj7 = 243 / 128
 
-// Coefficients for generating the waveshape for the oscillator
-const waveCoefficients = 4;
-const real = new Float32Array(waveCoefficients);
-const imag = new Float32Array(waveCoefficients);
+const chromatic = [root, min2, maj2, min3, maj3, fourth, dim5, fifth, min6, maj6, min7, maj7]
+const diatonic = [root, maj2, maj3, fourth, fifth, maj6, maj7]
+const major7th = [root, maj3, fifth, maj7]
+const minor7th = [root, min3, fifth, min7]
 
-// These are useful for tuning (to get really nice thirds, etc)
-const pythagoreanRatios = [
-  1,
-  256 / 243,
-  9 / 8,
-  32 / 27,
-  81 / 64,
-  4 / 3,
-  1024 / 729,
-  3 / 2,
-  128 / 81,
-  27 / 16,
-  16 / 9,
-  243 / 128,
-];
+const getNoteInScale = (scale: number[], i: number) => {
+  const octave = Math.floor(i / scale.length)
+  const step = math.arrMod(scale, i)
+  return step * 2 ** octave
+}
 
-const major7th = [1, 81 / 64, 3 / 2, 16 / 9];
+const chords = [major7th, minor7th]
 
-// A variable to store the most recent mouse position (for testing)
-const mouse = { x: 0, y: 0 };
+export type AudioAPI = {
+  tick: (currentTimeInSeconds: number) => void
+  pois: { lat: number; lon: number }[]
+}
 
-export async function main() {
-  // Remove the interaction prompt
-  //  document.querySelector("h1").remove();
-
+export function main(): AudioAPI {
   // Set up the audio context (MUST be done in response to user input)
-  audio.setupAudio();
+  audio.setupAudio()
 
   // Make some oscillators
-  const oscs = makeOscs(10);
+  const oscs = makeOscs(15)
 
   // Create some sliders for testing waveCoefficients
   // We skip the first coefficient because it's just DC offset
   // makeSliders(waveCoefficients - 1, (i, v) => (real[i + 1] = v))
 
-  real[1] = 1;
+  real[1] = 1
 
-  function tick(ms) {
-    requestAnimationFrame(tick);
+  const pois = [
+    { lat: 1, lon: 2 },
+    { lat: 3, lon: 4 },
+  ]
 
-    let t = ms / 1000;
+  function tick(t: number) {
+    // Current chord
+    const chordIndex = Math.round(t / 1)
+    const currentChord = math.arrMod(chords, chordIndex)
 
     // Modulate the coeficients to create interesting ambience
     for (let i = 0; i < waveCoefficients; i++) {
-      const frac = i / waveCoefficients;
+      const frac = i / waveCoefficients
 
-      let innerCycle = Math.sin(frac * t);
-      let outerCycle = Math.sin(frac * innerCycle);
-      imag[i] = (1 - frac) * outerCycle;
+      // let innerCycle = Math.sin(frac * t)
+      // let outerCycle = Math.sin(frac * innerCycle)
+      // imag[i] = (1 - frac) * outerCycle
 
-      let c = Math.cos(t);
-      let p = Math.pow(c, Math.round((2 * t) % 3));
-      const beat = Math.round(Math.sin(p * math.TAU));
-      imag[i] *= beat;
-      real[i] *= beat;
+      // let c = Math.cos(t)
+      // let p = Math.pow(c, Math.round((2 * t) % 3))
+      // const beat = Math.round(Math.sin(p * math.TAU))
+      // imag[i] *= beat
+      // real[i] *= beat
 
       // let c = Math.cos(frac * t)
       // let p = Math.pow(c, Math.round((2 * t) % 3))
@@ -85,134 +83,66 @@ export async function main() {
       // real[i] = isFinite(real[i]) ? real[i] : 0
     }
 
+    // real[1] = math.impulse((t / 1) % 2)
+
     // Create a new PeriodicWave every frame, using the current real / imag coefficients
-    const wave = audio.context.createPeriodicWave(real, imag, {
-      disableNormalization: true,
-    });
+    const wave = audio.context.createPeriodicWave(real, imag, { disableNormalization: true })
 
     // Update all oscillators to use this new PeriodicWave
-    oscs.forEach((osc) => osc.setPeriodicWave(wave));
+    oscs.forEach((osc) => osc.setPeriodicWave(wave))
 
     // Make the oscillators a bit silly
     // oscs.forEach((osc) => (osc.detune.value = 1000 * Math.tan(t / 100)))
 
     // oscs.forEach((osc) => (osc.detune.value = mouse.x))
 
+    // Pitch warble based on time
+    // oscs.forEach((osc) => (osc.detune.value = 50 * Math.sin(t)))
+
     // Calculate transposition so that we sort of smoothstep through the ratios
-    const transTime = 20;
-    const transFrac = t / transTime;
-    const lowT = math.arrMod(pythagoreanRatios, Math.floor(transFrac));
-    const hiT =
-      lowT == 11 ? 12 : math.arrMod(pythagoreanRatios, Math.ceil(transFrac));
-    const curvedT = math.denormalized(transFrac % 1, -1, 1) ** 7;
-    const trans = math.renormalized(curvedT, -1, 1, lowT, hiT);
+    const transTime = 20
+    const transFrac = t / transTime
+    const lowT = math.arrMod(chromatic, Math.floor(transFrac))
+    const hiT = lowT == 11 ? 12 : math.arrMod(chromatic, Math.ceil(transFrac))
+    const curvedT = math.denormalized(transFrac % 1, -1, 1) ** 7
+    const trans = math.renormalized(curvedT, -1, 1, lowT, hiT)
 
     // Tune the oscillators
     oscs.forEach((osc, i) => {
-      let y = 1; //math.normalized(mouse.y, 0, window.innerHeight)
-      let x = 0.3; // math.normalized(mouse.x, 0, window.innerWidth)
+      let y = 1 //math.normalized(mouse.y, 0, window.innerHeight)
+      let x = 0.3 // math.normalized(mouse.x, 0, window.innerWidth)
 
-      const octave = Math.floor(i / major7th.length);
-      const ratio = math.arrMod(major7th, i);
-      const f = math.denormalized(x ** 4, 0, 10_000);
-      const freq = math.denormalized(y, f, f * 2 ** octave * ratio * trans);
-      osc.frequency.value = freq;
-    });
-
-    // Render to the canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawSpectrum();
-    drawMouse();
+      const f = 130.813
+      const freq = f * getNoteInScale(currentChord, i)
+      osc.frequency.value = freq
+    })
   }
 
-  // Begin running the tick function
-  requestAnimationFrame(tick);
-
-  try {
-    const wakeLock = await navigator.wakeLock.request("screen");
-  } catch (err) {
-    alert(`${err.name}, ${err.message}`);
-  }
+  return { tick, pois }
 }
 
 // HELPERS
 
-function makeSliders(
-  count: number,
-  cb: (index: number, value: number) => void
-) {
+function makeSliders(count: number, cb: (index: number, value: number) => void) {
   new Array(count).fill(0).map((v, i) => {
-    let slider = document.createElement("input");
-    slider.type = "range";
-    slider.min = "0";
-    slider.max = "1";
-    slider.value = "0";
-    slider.step = "0.01";
-    slider.oninput = () => cb(i, +slider.value);
-    document.body.append(slider);
-  });
+    let slider = document.createElement("input")
+    slider.type = "range"
+    slider.min = "0"
+    slider.max = "1"
+    slider.value = "0"
+    slider.step = "0.01"
+    slider.oninput = () => cb(i, +slider.value)
+    document.body.append(slider)
+  })
 }
 
 function makeOscs(count): OscillatorNode[] {
   return new Array(count).fill(null).map((v, i) => {
-    const osc = new OscillatorNode(audio.context);
-    const gain = new GainNode(audio.context, { gain: 1 / count });
-    osc.connect(gain);
-    gain.connect(audio.input);
-    osc.start();
-    return osc;
-  });
+    const osc = new OscillatorNode(audio.context)
+    const gain = new GainNode(audio.context, { gain: 1 / count })
+    osc.connect(gain)
+    gain.connect(audio.input)
+    osc.start()
+    return osc
+  })
 }
-
-function drawSpectrum() {
-  const nBins = audio.analyser.frequencyBinCount;
-  const binData = new Uint8Array(nBins);
-  audio.analyser.getByteFrequencyData(binData);
-
-  ctx.beginPath();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = "#fff";
-  ctx.moveTo(0, window.innerHeight);
-  for (let i = 0; i < nBins; i++) {
-    let frac = i / nBins;
-    frac **= 0.25; // This biases the spectrum so that low frequencies are wider, which more closely matches how we perceive pitch
-    const x = math.denormalized(frac, 0, window.innerWidth);
-    const y = math.renormalized(binData[i], 0, 256, window.innerHeight, 0);
-    ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-}
-
-function drawMouse() {
-  ctx.beginPath();
-  ctx.fillStyle = "#fff";
-  ctx.arc(mouse.x, mouse.y, 10, 0, math.TAU);
-  ctx.fill();
-}
-
-// Resize the canvas, set a nice scale factor, and set sensible defaults (which get cleared on resize)
-function resize() {
-  const dpi = window.devicePixelRatio;
-  width = window.innerWidth;
-  height = window.innerHeight;
-  canvas.width = dpi * width;
-  canvas.height = dpi * height;
-  ctx.resetTransform();
-  ctx.scale(dpi, dpi);
-  ctx.font = "12px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-}
-window.addEventListener("resize", resize);
-resize();
-
-// Track the mouse position
-window.addEventListener("pointermove", (e) => {
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
-});
-
-// When the user clicks, initialize the audio and begin running
-// window.addEventListener("pointerup", main, { once: true });
