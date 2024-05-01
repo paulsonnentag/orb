@@ -1,6 +1,16 @@
 import rawGraph from "./graph.json";
 import { Vec2d, Graph, Node, Link } from "./lib/graph";
 import { applyForces } from "./lib/force-layout";
+import { addDeviceOrientationListener } from "./lib/brower";
+import {
+  GeoPosition,
+  getSurroundingSoundSources,
+  GeoSoundSource,
+} from "./lib/sound-source";
+
+// Globals
+
+let soundSources: GeoSoundSource[] = [];
 
 // SETUP CANVAS
 
@@ -57,6 +67,20 @@ function render() {
   ctx.strokeStyle = "#fff";
   ctx.translate(width / 2, height / 2);
 
+  soundSources.forEach((source) => {
+    ctx.beginPath();
+    ctx.arc(
+      source.screenPosition.x * 7,
+      source.screenPosition.y * 7,
+      10,
+      0,
+      2 * Math.PI,
+      false
+    );
+    ctx.fillStyle = "red";
+    ctx.fill();
+  });
+
   links.forEach(({ from, to }) => {
     ctx.beginPath();
     ctx.moveTo(from.position.x, from.position.y);
@@ -71,3 +95,29 @@ function render() {
 }
 
 render();
+
+// EVENTS
+
+let angle: number = 0;
+let geoPosition: GeoPosition = {
+  lat: 50.7753,
+  lng: 6.0839,
+};
+
+const updateSoundSources = () => {
+  console.log("angle", angle);
+  soundSources = getSurroundingSoundSources(geoPosition, angle);
+};
+
+updateSoundSources();
+
+document.body.addEventListener(
+  "click",
+  () => {
+    addDeviceOrientationListener((event) => {
+      angle = event.alpha;
+      updateSoundSources();
+    });
+  },
+  { once: true }
+);

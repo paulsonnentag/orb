@@ -7,7 +7,7 @@ import {
   getClosestTriangle,
   getCentroid,
 } from "./lib/graph";
-import { getClosestPoints } from "./geo";
+import { getSurroundingSoundSources } from "./lib/sound-source";
 import { main } from "./sound/app";
 import * as audio from "./sound/audio";
 import * as math from "./sound/math";

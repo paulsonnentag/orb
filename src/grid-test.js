@@ -1,4 +1,7 @@
-import { createGeoPositions, getClosestPoints } from "./geo";
+import {
+  createGeoLocations,
+  getSurroundingSoundSources,
+} from "./lib/sound-source";
 
 import L from "leaflet";
 
@@ -29,10 +32,10 @@ function updateGrid(center, angle) {
     map.removeLayer(gridMarkers[i]);
   }
   gridMarkers = [];
-  var geoPositions = createGeoPositions(center);
+  var geoPositions = createGeoLocations(center);
   gridMarkers = createMarkersFromPositions(geoPositions);
 
-  var closestPoints = getClosestPoints(center, angle);
+  var closestPoints = getSurroundingSoundSources(center, angle);
   console.log(closestPoints);
 }
 

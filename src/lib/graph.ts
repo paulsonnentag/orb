@@ -1,9 +1,6 @@
 export type Node = { id: number; position: Vec2d; force: Vec2d };
-
 export type Link = { from: Node; to: Node };
-
 export type Triangle = Node[];
-
 export type Graph = { nodes: Node[]; links: Link[] };
 
 export const findTriangles = ({ nodes, links }: Graph): Triangle[] => {
