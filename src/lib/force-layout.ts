@@ -1,5 +1,4 @@
 import { Graph, Vec2d, Node } from "./graph";
-import { GeoSoundSource } from "./sound-source";
 
 const GRAVITY_CONSTANT = 0.1;
 const FORCE_CONSTANT = window.innerWidth * 0.5;

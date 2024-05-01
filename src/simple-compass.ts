@@ -188,7 +188,7 @@ document.body.addEventListener(
   "click",
   () => {
     addDeviceOrientationListener((event) => {
-      angle = event.alpha;
+      angle = -event.alpha;
       updateSoundSources();
     });
 
