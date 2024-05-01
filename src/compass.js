@@ -5,9 +5,12 @@ import {
   findTriangles,
   pointInTriangle,
   getClosestTriangle,
-  getOuterNodes,
   getCentroid,
-} from "./utils";
+} from "./lib/graph";
+import { getClosestPoints } from "./geo";
+import { main } from "./sound/app";
+import * as audio from "./sound/audio";
+import * as math from "./sound/math";
 
 const { nodes, links } = graph;
 const nodesById = {};
@@ -45,7 +48,20 @@ const simulation = d3
       return;
     }
 
-    const k = alpha * Math.sin(Date.now() / 500) * 3; // Strength of the force, adjust as needed
+    let k = alpha * 3;
+
+    if (audio.analyser) {
+      const nBins = audio.analyser.frequencyBinCount;
+      const binData = new Uint8Array(nBins);
+      audio.analyser.getByteFrequencyData(binData);
+
+      let amp = binData.reduce((max, num) => (num > max ? num : max));
+
+      amp = math.renormalized(amp, 150, 200, -1, 1);
+
+      k = alpha * amp * 3; // Strength of the force, adjust as needed
+    }
+
     for (let i = 0, n = nodes.length; i < n; ++i) {
       let node = nodes[i];
 
@@ -196,10 +212,14 @@ const setFocusPoint = (x, y) => {
   triangle.attr("class", (t) => (t === highlightedTriangle ? "active" : ""));
 };
 
-const onChangeGeoPosition = (event) => {};
+const onChangeGeoPosition = (event) => {
+  console.log(event);
+};
+
+let angle = 0;
 
 const onChangeDeviceOrientation = (event) => {
-  const angle = (event.alpha / 180) * Math.PI;
+  angle = (event.alpha / 180) * Math.PI;
 
   const x = Math.cos(angle) * 100;
   const y = Math.sin(angle) * 100;
@@ -237,6 +257,8 @@ function initDeviceOrientation() {
         })
         .catch(console.error); // Handle potential errors in requesting permission
     } else {
+      console.log("listen orientation");
+
       // Permissions API not needed, just add event listener
       window.addEventListener("deviceorientation", onChangeDeviceOrientation);
     }
@@ -269,6 +291,12 @@ function watchGeoPosition() {
   }
 }
 
-document.addEventListener("click", () => {
-  initDeviceOrientation();
-});
+document.addEventListener(
+  "pointerup",
+  () => {
+    initDeviceOrientation();
+    watchGeoPosition();
+    main();
+  },
+  { once: true }
+);

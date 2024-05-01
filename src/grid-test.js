@@ -1,4 +1,4 @@
-import { createGeoPositions } from "./geo";
+import { createGeoPositions, getClosestPoints } from "./geo";
 
 import L from "leaflet";
 
@@ -24,7 +24,7 @@ function createMarkersFromPositions(geoPositions) {
   return markers;
 }
 
-function updateGrid(center) {
+function updateGrid(center, angle) {
   for (var i = 0; i < gridMarkers.length; i++) {
     map.removeLayer(gridMarkers[i]);
   }
@@ -32,15 +32,69 @@ function updateGrid(center) {
   var geoPositions = createGeoPositions(center);
   gridMarkers = createMarkersFromPositions(geoPositions);
 
-  console.log(gridMarkers);
+  var closestPoints = getClosestPoints(center, angle);
+  console.log(closestPoints);
 }
+
+// Create a slider element
+var slider = document.createElement("input");
+slider.type = "range";
+slider.min = "0";
+slider.max = "360";
+slider.value = "0";
+slider.id = "angleSlider";
+slider.style.position = "absolute";
+slider.style.top = "0";
+slider.style.right = "0";
+slider.style.zIndex = "1000";
+document.body.appendChild(slider);
+
+// Initialize a variable to hold the current marker
+var currentMarker = null;
+
+// Register a change handler for the slider
+document.getElementById("angleSlider").addEventListener("input", function () {
+  var angle = this.value;
+  var center = map.getCenter();
+  updateGrid(center, angle);
+
+  var triangleDiv = L.divIcon({
+    className: "triangle-marker",
+    iconSize: [30, 30],
+    html:
+      '<div style="width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 30px solid red; transform: rotate(' +
+      angle +
+      'deg);"></div>',
+  });
+
+  // Remove the previous marker if it exists
+  if (currentMarker) {
+    map.removeLayer(currentMarker);
+  }
+
+  // Add the new marker and store it in currentMarker
+  currentMarker = L.marker(center, { icon: triangleDiv }).addTo(map);
+});
 
 map.on("moveend", function () {
   var center = map.getCenter();
-  updateGrid(center);
-  L.marker(center, {
-    icon: L.icon({
-      iconUrl: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-    }),
-  }).addTo(map);
+
+  var angle = document.getElementById("angleSlider").value;
+  updateGrid(center, angle);
+  var triangleDiv = L.divIcon({
+    className: "triangle-marker",
+    iconSize: [30, 30],
+    html:
+      '<div style="width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 30px solid red; transform: rotate(' +
+      angle +
+      'deg);"></div>',
+  });
+
+  // Remove the previous marker if it exists
+  if (currentMarker) {
+    map.removeLayer(currentMarker);
+  }
+
+  // Add the new marker and store it in currentMarker
+  currentMarker = L.marker(center, { icon: triangleDiv }).addTo(map);
 });
