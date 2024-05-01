@@ -32,3 +32,29 @@ export const addDeviceOrientationListener = (
     console.log("DeviceOrientationEvent is not supported by this browser.");
   }
 };
+
+// Function to continuously get the geo position
+export const addGeoPositionWatcher = (
+  callback: (position: GeolocationPosition) => void
+) => {
+  if ("geolocation" in navigator) {
+    // Check if geolocation is available
+    navigator.geolocation.watchPosition(
+      (position) => {
+        // On success, call the callback with the position data
+        callback(position);
+      },
+      (error) => {
+        // On error, log the error
+        console.error("Error getting geolocation: ", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+  } else {
+    console.log("Geolocation is not supported by this browser.");
+  }
+};

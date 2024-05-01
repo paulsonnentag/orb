@@ -1,11 +1,16 @@
-import { Graph } from "./graph";
+import { Graph, Triangle } from "./graph";
+import { GeoSoundSource } from "./sound-source";
 
 const GRAVITY_CONSTANT = 0.1;
 const FORCE_CONSTANT = window.innerWidth * 0.5;
 
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
-export const applyForces = ({ nodes, links }: Graph) => {
+export const applyForces = (
+  { nodes, links }: Graph,
+  triangles: Triangle[],
+  soundSources: GeoSoundSource[]
+) => {
   // apply force towards centre
   nodes.forEach((node) => {
     const gravity = node.position.copy().multScalar(-1 * GRAVITY_CONSTANT);

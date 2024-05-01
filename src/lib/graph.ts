@@ -3,59 +3,70 @@ export type Link = { from: Node; to: Node };
 export type Triangle = Node[];
 export type Graph = { nodes: Node[]; links: Link[] };
 
-export const findTriangles = ({ nodes, links }: Graph): Triangle[] => {
-  const nodesById: Record<number, Node> = {};
-  nodes.forEach((node) => {
-    nodesById[node.id] = node;
+export const findTriangles = (graph: Graph): Triangle[] => {
+  const triangles: Triangle[] = [];
+
+  // Create a map to track neighbors of each node by node ID
+  const neighbors = new Map<number, Set<number>>();
+
+  // Initialize the neighbors map
+  graph.nodes.forEach((node) => {
+    neighbors.set(node.id, new Set());
   });
 
-  // Convert the list of links into an adjacency list
-  const adjacencyList = new Map<number, Set<number>>();
-  links.forEach((link) => {
-    if (!adjacencyList.has(link.from.id)) {
-      adjacencyList.set(link.from.id, new Set());
+  // Populate the neighbors map based on the graph's links
+  graph.links.forEach((link) => {
+    neighbors.get(link.from.id)?.add(link.to.id);
+    neighbors.get(link.to.id)?.add(link.from.id);
+  });
+
+  // Check for triangles
+  graph.nodes.forEach((node) => {
+    const nodeNeighbors = neighbors.get(node.id);
+    if (nodeNeighbors) {
+      nodeNeighbors.forEach((neighborId) => {
+        nodeNeighbors.forEach((otherNeighborId) => {
+          if (
+            neighborId !== otherNeighborId &&
+            neighbors.get(neighborId)?.has(otherNeighborId)
+          ) {
+            // Found a triangle
+            const potentialTriangle = [
+              graph.nodes.find((n) => n.id === node.id),
+              graph.nodes.find((n) => n.id === neighborId),
+              graph.nodes.find((n) => n.id === otherNeighborId),
+            ].sort((a, b) => a!.id - b!.id); // Sort to avoid duplicate triangles
+
+            // Add triangle if it's not already included
+            const triangleIdString = potentialTriangle
+              .map((n) => n!.id)
+              .join(",");
+            if (
+              !triangles.find(
+                (t) => t.map((n) => n.id).join(",") === triangleIdString
+              )
+            ) {
+              triangles.push(potentialTriangle as Triangle);
+            }
+          }
+        });
+      });
     }
-    if (!adjacencyList.has(link.to.id)) {
-      adjacencyList.set(link.to.id, new Set());
-    }
-    adjacencyList.get(link.from.id)!.add(link.from.id);
-    adjacencyList.get(link.to.id)!.add(link.to.id);
   });
 
-  // Find all triangles
-  const triangles = new Set<string>();
-  links.forEach((link) => {
-    const { from, to } = link;
-    // Check for mutual neighbors of source and target
-    adjacencyList.get(from.id)!.forEach((neighbor) => {
-      if (adjacencyList.get(to.id)!.has(neighbor)) {
-        let nodeIds = [from.id, to.id, neighbor].sort();
-        triangles.add(JSON.stringify(nodeIds)); // Use JSON stringify to handle unique checks
-      }
-    });
-  });
-
-  // Convert stringified arrays back to arrays of node IDs
-  return Array.from(triangles).map((triangle) => {
-    const nodeIds = JSON.parse(triangle) as number[];
-    return nodeIds.map((id) => nodesById[id]);
-  });
+  return triangles;
 };
 
-export function sign(p1: Vec2d, p2: Vec2d, p3: P) {
+// Helper function to calculate the sign of the determinant of a triangle formed by three points
+function sign(p1: Vec2d, p2: Vec2d, p3: Vec2d): number {
   return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 }
 
-export function pointInTriangle(point: Vec2d, triangle: Triangle) {
+// Function to check if a point is inside the triangle
+export function pointInTriangle(point: Vec2d, triangle: Triangle): boolean {
   const d1 = sign(point, triangle[0].position, triangle[1].position);
   const d2 = sign(point, triangle[1].position, triangle[2].position);
   const d3 = sign(point, triangle[2].position, triangle[0].position);
-
-  /*
-  d1 = sign(point, v1, v2);
-  d2 = sign(point, v2, v3);
-  d3 = sign(point, v3, v1);
-  */
 
   const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
   const hasPos = d1 > 0 || d2 > 0 || d3 > 0;

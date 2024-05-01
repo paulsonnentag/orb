@@ -1,14 +1,25 @@
 import rawGraph from "./graph.json";
-import { Vec2d, Graph, Node, Link } from "./lib/graph";
+import {
+  Vec2d,
+  Graph,
+  Node,
+  Link,
+  findTriangles,
+  Triangle,
+  pointInTriangle,
+} from "./lib/graph";
 import { applyForces } from "./lib/force-layout";
-import { addDeviceOrientationListener } from "./lib/brower";
+import {
+  addDeviceOrientationListener,
+  addGeoPositionWatcher,
+} from "./lib/brower";
 import {
   GeoPosition,
   getSurroundingSoundSources,
   GeoSoundSource,
 } from "./lib/sound-source";
 
-// Globals
+// GLOBAL STATE
 
 let soundSources: GeoSoundSource[] = [];
 
@@ -59,27 +70,66 @@ const graph: Graph = {
   links,
 };
 
+const triangles = findTriangles(graph);
+
+console.log(triangles);
+
 // RENDER
 
+let mouse = new Vec2d(0, 0);
+
+const canvasElement = document.getElementById("canvas");
+if (canvasElement) {
+  canvasElement.addEventListener("mousemove", (event) => {
+    mouse = new Vec2d(
+      event.clientX - window.innerWidth / 2,
+      event.clientY - window.innerHeight / 2
+    );
+  });
+} else {
+  console.error("Element with id 'canvas' not found");
+}
+
 function render() {
+  let trianglesWithSound: Triangle[] = [];
+
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
   ctx.translate(width / 2, height / 2);
 
   soundSources.forEach((source) => {
-    ctx.beginPath();
-    ctx.arc(
-      source.screenPosition.x * 7,
-      source.screenPosition.y * 7,
-      10,
-      0,
-      2 * Math.PI,
-      false
+    const triangle = triangles.find((triangle) =>
+      pointInTriangle(source.screenPosition, triangle)
     );
+
+    if (triangle) {
+      trianglesWithSound.push(triangle);
+    } else {
+      ctx.beginPath();
+      ctx.arc(
+        source.screenPosition.x,
+        source.screenPosition.y,
+        Math.max(0, 20 - Math.sqrt(source.distance)),
+        0,
+        2 * Math.PI,
+        false
+      );
+      ctx.fillStyle = "red";
+      ctx.fill();
+    }
+  });
+
+  for (const triangle of trianglesWithSound) {
+    ctx.beginPath();
+    ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
+    ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
+    ctx.lineTo(triangle[2].position.x, triangle[2].position.y);
+    ctx.closePath();
     ctx.fillStyle = "red";
     ctx.fill();
-  });
+  }
 
   links.forEach(({ from, to }) => {
     ctx.beginPath();
@@ -90,7 +140,7 @@ function render() {
 
   ctx.restore();
 
-  applyForces(graph);
+  applyForces(graph, triangles, soundSources);
   requestAnimationFrame(render);
 }
 
@@ -117,6 +167,13 @@ document.body.addEventListener(
     addDeviceOrientationListener((event) => {
       angle = event.alpha;
       updateSoundSources();
+    });
+
+    addGeoPositionWatcher((newGeoPosition) => {
+      geoPosition = {
+        lat: newGeoPosition.coords.latitude,
+        lng: newGeoPosition.coords.longitude,
+      };
     });
   },
   { once: true }
