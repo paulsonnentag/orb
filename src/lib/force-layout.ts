@@ -1,8 +1,7 @@
 import { Graph, Vec2d, Node } from "./graph";
-import { GeoSoundSource } from "./sound-source";
 
 const GRAVITY_CONSTANT = 0.1;
-const FORCE_CONSTANT = window.innerWidth * 0.5;
+const FORCE_CONSTANT = 100;
 
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
@@ -11,15 +10,21 @@ export type PullForce = {
   destination: Vec2d;
 };
 
-export const applyForces = (
-  { nodes, links }: Graph,
-  soundSources: GeoSoundSource[],
-  forces: PullForce[]
-) => {
+export const applyForces = ({ nodes, links }: Graph, attractors: Vec2d[]) => {
   // apply force towards centre
   nodes.forEach((node) => {
     const gravity = node.position.copy().multScalar(-1 * GRAVITY_CONSTANT);
     node.force = gravity;
+  });
+
+  attractors.forEach((attractor) => {
+    nodes.forEach((node) => {
+      const direction = attractor.copy().sub(node.position);
+      const distanceMagnitude = direction.mag();
+      const unitDirection = direction.copy().divScalar(distanceMagnitude);
+      const pullForce = unitDirection.multScalar(FORCE_CONSTANT * 0.1);
+      node.force.add(pullForce);
+    });
   });
 
   // apply repulsive force between nodes

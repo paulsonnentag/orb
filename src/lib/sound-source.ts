@@ -36,8 +36,8 @@ export function createGeoLocations(
 
 export type GeoSoundSource = {
   geoPosition: GeoPosition;
-  screenPosition: Vec2d;
   distance: number;
+  angle: number;
 };
 
 export function getSurroundingSoundSources(
@@ -60,15 +60,11 @@ export function getSurroundingSoundSources(
       const markerAngle = Math.atan2(lngDiffMeters, latDiffMeters);
       // Adjust the angle relative to the input angle
       const relativeAngle = markerAngle - (angle / 180) * Math.PI;
-      const x =
-        Math.cos(relativeAngle) * Math.sqrt(distanceMeters / 20) * 20 * 7;
-      const y =
-        Math.sin(relativeAngle) * Math.sqrt(distanceMeters / 20) * 20 * 7;
 
       return {
         geoPosition: { lat: marker.lat, lng: marker.lng },
-        screenPosition: new Vec2d(x, y),
         distance: distanceMeters,
+        angle: relativeAngle,
       };
     })
     .sort((a, b) => a.distance - b.distance);

@@ -12,7 +12,7 @@ import { applyForces, PullForce } from "./lib/force-layout";
 import {
   addDeviceOrientationListener,
   addGeoPositionWatcher,
-} from "./lib/brower";
+} from "./lib/browser";
 import {
   GeoPosition,
   getSurroundingSoundSources,
@@ -91,77 +91,58 @@ if (canvasElement) {
   console.error("Element with id 'canvas' not found");
 }
 
-function tick(t) {
-  let trianglesWithSound: Triangle[] = [];
-  let soundSourcesInDome: GeoSoundSource[] = [];
-  let forces: PullForce[] = [];
+let RADIUS = 150; // todo: scale this to the size of the orb
 
+const getDistortedDistance = (distance: number) => {
+  return Math.max(Math.log2(distance / 4) * 50, 0);
+};
+
+const getRadius = (distance: number) => {
+  return Math.max(5, (200 - distance / 2) / 10);
+};
+
+function tick(t) {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 2;
   ctx.translate(width / 2, height / 2);
 
-  soundSources.forEach((source) => {
-    const triangle = triangles.find((triangle) =>
-      pointInTriangle(source.screenPosition, triangle)
-    );
+  let attractor: Vec2d;
 
-    let closestNode = null;
-    if (triangle) {
-      trianglesWithSound.push(triangle);
-      soundSourcesInDome.push(source);
-    } else {
-      let minDistance = 20;
-      nodes.forEach((node) => {
-        const distance = Math.sqrt(
-          (source.screenPosition.x - node.position.x) ** 2 +
-            (source.screenPosition.y - node.position.y) ** 2
-        );
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestNode = node;
-        }
-      });
+  soundSources.forEach(({ angle, distance }, index) => {
+    const distortedDistance = getDistortedDistance(distance);
 
-      if (closestNode) {
-        forces.push({
-          node: closestNode,
-          destination: source.screenPosition,
-        });
-      }
-      ctx.beginPath();
-      const radius = Math.max(0, 20 - Math.sqrt(source.distance));
-      ctx.arc(
-        source.screenPosition.x,
-        source.screenPosition.y,
-        radius,
-        0,
-        2 * Math.PI,
-        false
-      );
-      ctx.fillStyle = audioApi
-        ? `hsl(${(audioApi.state.chord / 8) * 360}, 100%, 50%)`
-        : "red";
-      //ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
-      ctx.fill();
+    const x = Math.cos(angle) * (distortedDistance + RADIUS);
+    const y = Math.sin(angle) * (distortedDistance + RADIUS);
+
+    if (index === 0) {
+      attractor = new Vec2d(x, y);
     }
+
+    ctx.beginPath();
+    const radius = getRadius(distance);
+
+    ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+    ctx.fillStyle = "red";
+    ctx.fill();
   });
 
   if (audioApi) {
     audioApi.tick(
       t,
       orientation,
-      soundSourcesInDome.map((source) => ({
+      []
+      /* soundSourcesInDome.map((source) => ({
         lat: source.geoPosition.lat,
         lon: source.geoPosition.lng,
         collected: false,
         type: 1,
-      }))
+      })) */
     );
   }
 
-  for (const triangle of trianglesWithSound) {
+  /* for (const triangle of trianglesWithSound) {
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
@@ -169,7 +150,7 @@ function tick(t) {
     ctx.closePath();
     ctx.fillStyle = "red";
     ctx.fill();
-  }
+  } */
 
   links.forEach(({ from, to }) => {
     ctx.beginPath();
@@ -180,7 +161,7 @@ function tick(t) {
 
   ctx.restore();
 
-  applyForces(graph, forces);
+  applyForces(graph, [attractor]);
   requestAnimationFrame(tick);
 }
 
@@ -201,10 +182,13 @@ let geoPosition: GeoPosition = {
 
 const updateSoundSources = () => {
   soundSources = getSurroundingSoundSources(geoPosition, angle);
+
+  console.log(soundSources);
 };
 
 updateSoundSources();
 
+/*
 document.body.addEventListener(
   "click",
   () => {
@@ -230,4 +214,13 @@ document.body.addEventListener(
     requestAnimationFrame(tick);
   },
   { once: true }
-);
+);*/
+
+// start without permissions
+document.getElementById("intro").remove();
+requestAnimationFrame(tick);
+
+setInterval(() => {
+  geoPosition.lng -= 0.00001;
+  updateSoundSources();
+}, 100);
