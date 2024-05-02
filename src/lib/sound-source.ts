@@ -1,4 +1,3 @@
-import { Vec2d } from "./graph";
 import { random } from "./random";
 
 export type GeoPosition = { lat: number; lng: number };
@@ -25,8 +24,14 @@ export function createGeoLocations(
       var markerLng = lng - lngOffset - (n / 2) * lngStep + j * lngStep;
 
       const value = random(`${markerLat}:${markerLng}`);
-      if (value > 0.5) {
-        geoPositions.push({ lat: markerLat, lng: markerLng });
+      const latShift = (random(`${markerLat}:${markerLng}1`) - 0.5) / 10000;
+      const lngShift = (random(`${markerLat}:${markerLng}2`) - 9, 5) / 10000;
+
+      if (value > 0.7) {
+        geoPositions.push({
+          lat: markerLat + latShift,
+          lng: markerLng + lngShift,
+        });
       }
     }
   }
