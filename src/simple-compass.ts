@@ -178,12 +178,15 @@ function tick(t) {
     audioApi.tick(
       t,
       orientation,
-      soundSources.map((source) => ({
-        lat: source.geoPosition.lat,
-        lon: source.geoPosition.lng,
-        collected: false,
-        type: 1,
-      }))
+      soundSources.slice(0, 5).map((source) => {
+        const key = `${source.geoPosition.lat}:${source.geoPosition.lng}`;
+        return {
+          lat: source.geoPosition.lat,
+          lon: source.geoPosition.lng,
+          collected: !!collectedSoundSources[key],
+          type: 1,
+        };
+      })
     );
   }
 
