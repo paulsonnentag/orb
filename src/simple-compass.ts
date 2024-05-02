@@ -20,6 +20,7 @@ import {
   GeoSoundSource,
 } from "./lib/sound-source";
 import { AudioAPI, main as initAudioApi } from "./sound/app";
+import * as math from "./sound/math";
 
 // GLOBAL STATE
 
@@ -74,8 +75,6 @@ const graph: Graph = {
   links,
 };
 
-const triangles = findTriangles(graph);
-
 // RENDER
 
 let RADIUS = 120; // todo: scale this to the size of the orb
@@ -98,6 +97,19 @@ function tick(t) {
   let attractor: Vec2d;
 
   soundSources.forEach((soundSource, index) => {
+    let oscilatorAmplitude = 1;
+
+    if (audioApi) {
+      const { oscillators } = audioApi.state;
+      oscilatorAmplitude = math.renormalized(
+        oscillators[index % oscillators.length].amplitude,
+        0,
+        1,
+        0.5,
+        1
+      );
+    }
+
     const { angle, distance, geoPosition } = soundSource;
     // skip if we have already collected it
     const key = `${geoPosition.lat}:${geoPosition.lng}`;
@@ -117,11 +129,11 @@ function tick(t) {
     ctx.beginPath();
     const radius = getRadius(distance);
 
-    ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+    ctx.arc(x, y, radius * oscilatorAmplitude, 0, 2 * Math.PI, false);
     ctx.fillStyle = `rgba(255, 0, 0, ${radius / 10})`;
     ctx.fill();
 
-    const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 10);
+    const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 5);
 
     if (closestNode) {
       collectedSoundSources[key] = soundSource;
@@ -211,12 +223,3 @@ document.body.addEventListener(
   },
   { once: true }
 );
-
-// start without permissions
-document.getElementById("intro").remove();
-requestAnimationFrame(tick);
-
-setInterval(() => {
-  geoPosition.lng -= 0.00001;
-  updateSoundSources();
-}, 100);

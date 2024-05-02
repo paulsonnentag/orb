@@ -22,7 +22,7 @@ export const applyForces = ({ nodes, links }: Graph, attractors: Vec2d[]) => {
       const direction = attractor.copy().sub(node.position);
       const distanceMagnitude = direction.mag();
       const unitDirection = direction.copy().divScalar(distanceMagnitude);
-      const pullForce = unitDirection.multScalar(FORCE_CONSTANT * 0.1);
+      const pullForce = unitDirection.multScalar(FORCE_CONSTANT * 0.075);
       node.force.add(pullForce);
     });
   });
