@@ -28,6 +28,8 @@ let soundSources: GeoSoundSource[] = [];
 
 let collectedSoundSources: Record<string, GeoSoundSource> = {};
 
+let filledTriangles: Triangle[] = [];
+
 // SETUP CANVAS
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -75,9 +77,11 @@ const graph: Graph = {
   links,
 };
 
+const triangles = findTriangles(graph);
+
 // RENDER
 
-let RADIUS = 120; // todo: scale this to the size of the orb
+let RADIUS = 120;
 
 const getDistortedDistance = (distance: number) => {
   return Math.max(Math.log2(distance / 4) * 40, 0);
@@ -91,17 +95,18 @@ function tick(t) {
   let repulsionForce = 200;
   let attractorForce = 200;
   let gravity = 0.2;
+  let isDistortionActive = false;
 
   if (audioApi) {
-    const isDistortionApplied = audioApi.state.distortion > 0.1;
+    isDistortionActive = audioApi.state.distortion > 0.1;
 
     // change size of orb with amplitude
     repulsionForce =
       math.renormalized(audioApi.state.amplitude, 0, 1, 150, 200) +
-      (isDistortionApplied ? 150 : 0);
+      (isDistortionActive ? 150 : 0);
 
     // make gravity funky if distortion happens
-    gravity = isDistortionApplied
+    gravity = isDistortionActive
       ? math.renormalized(audioApi.state.distortion, 0, 1, 0.4, 0.5)
       : 0.2;
   }
@@ -113,6 +118,8 @@ function tick(t) {
   ctx.translate(width / 2, height / 2);
 
   let attractor: Vec2d;
+
+  let isFirst = true;
 
   soundSources.forEach((soundSource, index) => {
     let oscilatorAmplitude = 1;
@@ -140,8 +147,10 @@ function tick(t) {
     const x = Math.cos(angle) * (distortedDistance + RADIUS);
     const y = Math.sin(angle) * (distortedDistance + RADIUS);
 
-    if (index === 0) {
+    let isSourceOnScreen = Math.abs(x) < width / 2 && Math.abs(y) < height / 2;
+    if (isFirst && isSourceOnScreen) {
       attractor = new Vec2d(x, y);
+      isFirst = false;
     }
 
     ctx.beginPath();
@@ -150,11 +159,18 @@ function tick(t) {
     ctx.arc(x, y, radius * oscilatorAmplitude, 0, 2 * Math.PI, false);
     ctx.fillStyle = `rgba(255, 0, 0, ${radius / 10})`;
     ctx.fill();
+    // don't allow to pick up nodes when distortion is active
+    if (!isDistortionActive) {
+      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 5);
 
-    const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 5);
+      if (closestNode) {
+        collectedSoundSources[key] = soundSource;
 
-    if (closestNode) {
-      collectedSoundSources[key] = soundSource;
+        const triangle = triangles.pop();
+        if (triangle) {
+          filledTriangles.push(triangle);
+        }
+      }
     }
   });
 
@@ -162,17 +178,16 @@ function tick(t) {
     audioApi.tick(
       t,
       orientation,
-      []
-      /* soundSourcesInDome.map((source) => ({
+      soundSources.map((source) => ({
         lat: source.geoPosition.lat,
         lon: source.geoPosition.lng,
         collected: false,
         type: 1,
-      })) */
+      }))
     );
   }
 
-  /* for (const triangle of trianglesWithSound) {
+  for (const triangle of filledTriangles) {
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
@@ -180,7 +195,7 @@ function tick(t) {
     ctx.closePath();
     ctx.fillStyle = "red";
     ctx.fill();
-  } */
+  }
 
   links.forEach(({ from, to }) => {
     ctx.beginPath();
@@ -249,6 +264,6 @@ document.body.addEventListener(
 setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
-  geoPosition.lng += 0.000002;
+  geoPosition.lng -= 0.00002;
   updateSoundSources();
 }, 100);
