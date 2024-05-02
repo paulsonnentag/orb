@@ -97,7 +97,7 @@ function tick(t) {
 
     // change size of orb with amplitude
     repulsionForce =
-      math.renormalized(audioApi.state.amplitude, 0, 1, 200, 250) +
+      math.renormalized(audioApi.state.amplitude, 0, 1, 150, 200) +
       (isDistortionApplied ? 150 : 0);
 
     // make gravity funky if distortion happens
@@ -105,8 +105,6 @@ function tick(t) {
       ? math.renormalized(audioApi.state.distortion, 0, 1, 0.4, 0.5)
       : 0.2;
   }
-
-  console.log(audioApi.state.distortion);
 
   ctx.save();
   ctx.clearRect(0, 0, width, height);
@@ -247,3 +245,10 @@ document.body.addEventListener(
   },
   { once: true }
 );
+
+setInterval(() => {
+  // Assuming 1 degree of latitude is approximately 111,139 meters
+  // 20 cm is 0.002 degrees
+  geoPosition.lng += 0.000002;
+  updateSoundSources();
+}, 100);

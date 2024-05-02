@@ -15,11 +15,21 @@ body {
   font-family: sans-serif;
 
   color: #fff;
-  background: #222;
 
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
+}
+
+html {
+  background: #393939;
+  background: radial-gradient(at center, #393939, #010101);
+}
+
+h1 {
+  background: none;
+  font-weight: normal;
+  color: #fff;
 }
 
 canvas {
