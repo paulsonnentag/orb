@@ -114,7 +114,7 @@ function tick(t) {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.translate(width / 2, height / 2);
 
   let attractor: Vec2d;
@@ -157,11 +157,11 @@ function tick(t) {
     const radius = getRadius(distance);
 
     ctx.arc(x, y, radius * oscilatorAmplitude, 0, 2 * Math.PI, false);
-    ctx.fillStyle = `rgba(255, 0, 0, ${radius / 10})`;
+    ctx.fillStyle = `rgba(255, 65, 54, ${radius / 10})`;
     ctx.fill();
     // don't allow to pick up nodes when distortion is active
     if (!isDistortionActive) {
-      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 5);
+      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius);
 
       if (closestNode) {
         collectedSoundSources[key] = soundSource;
@@ -193,7 +193,7 @@ function tick(t) {
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
     ctx.lineTo(triangle[2].position.x, triangle[2].position.y);
     ctx.closePath();
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "#FF4136";
     ctx.fill();
   }
 
@@ -261,9 +261,9 @@ document.body.addEventListener(
   { once: true }
 );
 
-setInterval(() => {
+/*setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
   geoPosition.lng -= 0.00002;
   updateSoundSources();
-}, 100);
+}, 100);*/
