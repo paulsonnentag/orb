@@ -88,6 +88,26 @@ const getRadius = (distance: number) => {
 };
 
 function tick(t) {
+  let repulsionForce = 200;
+  let attractorForce = 200;
+  let gravity = 0.2;
+
+  if (audioApi) {
+    const isDistortionApplied = audioApi.state.distortion > 0.1;
+
+    // change size of orb with amplitude
+    repulsionForce =
+      math.renormalized(audioApi.state.amplitude, 0, 1, 200, 250) +
+      (isDistortionApplied ? 150 : 0);
+
+    // make gravity funky if distortion happens
+    gravity = isDistortionApplied
+      ? math.renormalized(audioApi.state.distortion, 0, 1, 0.4, 0.5)
+      : 0.2;
+  }
+
+  console.log(audioApi.state.distortion);
+
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.strokeStyle = "#fff";
@@ -172,7 +192,11 @@ function tick(t) {
   });
 
   ctx.restore();
-  applyForces(graph, attractor ? [attractor] : []);
+  applyForces(graph, attractor ? [attractor] : [], {
+    repulsionForce,
+    attractorForce,
+    gravity,
+  });
   requestAnimationFrame(tick);
 }
 

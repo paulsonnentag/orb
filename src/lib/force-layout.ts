@@ -1,8 +1,5 @@
 import { Graph, Vec2d, Node } from "./graph";
 
-const GRAVITY_CONSTANT = 0.3;
-const FORCE_CONSTANT = 200;
-
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
 export type PullForce = {
@@ -10,10 +7,20 @@ export type PullForce = {
   destination: Vec2d;
 };
 
-export const applyForces = ({ nodes, links }: Graph, attractors: Vec2d[]) => {
+type ForceParams = {
+  attractorForce: number;
+  repulsionForce: number;
+  gravity: number;
+};
+
+export const applyForces = (
+  { nodes, links }: Graph,
+  attractors: Vec2d[],
+  params: ForceParams
+) => {
   // apply force towards centre
   nodes.forEach((node) => {
-    const gravity = node.position.copy().multScalar(-1 * GRAVITY_CONSTANT);
+    const gravity = node.position.copy().multScalar(-1 * params.gravity);
     node.force = gravity;
   });
 
@@ -22,7 +29,7 @@ export const applyForces = ({ nodes, links }: Graph, attractors: Vec2d[]) => {
       const direction = attractor.copy().sub(node.position);
       const distanceMagnitude = direction.mag();
       const unitDirection = direction.copy().divScalar(distanceMagnitude);
-      const pullForce = unitDirection.multScalar(FORCE_CONSTANT * 0.075);
+      const pullForce = unitDirection.multScalar(params.attractorForce * 0.075);
       node.force.add(pullForce);
     });
   });
@@ -33,7 +40,7 @@ export const applyForces = ({ nodes, links }: Graph, attractors: Vec2d[]) => {
       const position = nodes[i].position;
       const direction = nodes[j].position.copy().sub(position);
       const force = direction.divScalar(direction.mag() * direction.mag());
-      force.multScalar(FORCE_CONSTANT);
+      force.multScalar(params.repulsionForce);
       nodes[i].force.add(force.copy().multScalar(-1));
       nodes[j].force.add(force);
     }
