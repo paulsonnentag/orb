@@ -1,4 +1,5 @@
 import { Graph, Vec2d, Node } from "./graph";
+import { GeoSoundSource } from "./sound-source";
 
 const GRAVITY_CONSTANT = 0.1;
 const FORCE_CONSTANT = window.innerWidth * 0.5;
@@ -10,7 +11,11 @@ export type PullForce = {
   destination: Vec2d;
 };
 
-export const applyForces = ({ nodes, links }: Graph, forces: PullForce[]) => {
+export const applyForces = (
+  { nodes, links }: Graph,
+  soundSources: GeoSoundSource[],
+  forces: PullForce[]
+) => {
   // apply force towards centre
   nodes.forEach((node) => {
     const gravity = node.position.copy().multScalar(-1 * GRAVITY_CONSTANT);

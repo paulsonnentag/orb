@@ -1,6 +1,6 @@
 import * as math from "./math"
 
-const fftSize = 16384
+const fftSize = 32768
 
 export let context: AudioContext
 export let sampleRate: number
@@ -8,23 +8,29 @@ export let sampleRate: number
 export let input: GainNode
 export let analyser: AnalyserNode
 
-export function setupAudio() {
+export function setupAudio(runAnalysis: boolean) {
   context = new window.AudioContext()
   sampleRate = context.sampleRate
 
   input = new GainNode(context, { gain: 1 })
 
-  analyser = context.createAnalyser()
-  analyser.fftSize = fftSize
+  if (runAnalysis) {
+    analyser = context.createAnalyser()
+    analyser.fftSize = fftSize
+  }
 
-  const distortion = makeDistortion(10)
-  const reverb = makeReverb(3, 1, true)
+  const lightDistortion = makeDistortion(5)
+  const heavyDistortion = makeDistortion(50)
+  const reverb = makeReverb(1, 1, false)
   const softCompressor = context.createDynamicsCompressor()
   const hardCompressor = context.createDynamicsCompressor()
   const output = context.createGain()
 
-  distortion.wet.value = 0.1
-  distortion.dry.value = 1
+  lightDistortion.wet.value = 0.5
+  lightDistortion.dry.value = 1
+
+  heavyDistortion.wet.value = 0
+  heavyDistortion.dry.value = 1
 
   reverb.wet.value = 1
   reverb.dry.value = 0.2
@@ -43,12 +49,18 @@ export function setupAudio() {
 
   output.gain.value = 1
 
-  // input -> reverb -> soft -> hard -> output
+  // input -> heavy -> reverb -> light -> soft -> hard -> output
 
-  input.connect(distortion.input)
-  distortion.output.connect(reverb.input)
-  reverb.output.connect(softCompressor).connect(hardCompressor).connect(output)
-  output.connect(analyser).connect(context.destination)
+  input.connect(heavyDistortion.input)
+  heavyDistortion.output.connect(reverb.input)
+  reverb.output.connect(lightDistortion.input)
+  lightDistortion.output.connect(softCompressor).connect(hardCompressor).connect(output)
+  output.connect(context.destination)
+  if (runAnalysis) {
+    output.connect(analyser)
+  }
+
+  return { heavyDistortion }
 }
 
 function makeReverb(seconds: number, decay: number, reverse: boolean) {
@@ -64,7 +76,8 @@ function makeReverb(seconds: number, decay: number, reverse: boolean) {
 
   for (let i = 0; i < steps; i++) {
     const n = reverse ? steps - i : i
-    impulseL[i] = impulseR[i] = math.rand(-1, 1) * (1 - n / steps) ** decay
+    impulseL[i] = math.rand(-1, 1) * (1 - n / steps) ** decay
+    impulseR[i] = math.rand(-1, 1) * (1 - n / steps) ** decay
   }
 
   convolver.buffer = impulse

@@ -91,9 +91,7 @@ if (canvasElement) {
   console.error("Element with id 'canvas' not found");
 }
 
-function tick() {
-  audioApi.tick(Date.now() / 1000);
-
+function tick(t) {
   let trianglesWithSound: Triangle[] = [];
   let soundSourcesInDome: GeoSoundSource[] = [];
   let forces: PullForce[] = [];
@@ -142,16 +140,26 @@ function tick() {
         2 * Math.PI,
         false
       );
-      ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
+      ctx.fillStyle = audioApi
+        ? `hsl(${(audioApi.state.chord / 8) * 360}, 100%, 50%)`
+        : "red";
+      //ctx.fillStyle = closestNode ? "blue" : `rgba(255, 0, 0, ${radius / 20})`;
       ctx.fill();
     }
   });
 
-  // update locations in sound api
-  audioApi.pois = soundSourcesInDome.map((source) => ({
-    lat: source.geoPosition.lat,
-    lon: source.geoPosition.lng,
-  }));
+  if (audioApi) {
+    audioApi.tick(
+      t,
+      orientation,
+      soundSourcesInDome.map((source) => ({
+        lat: source.geoPosition.lat,
+        lon: source.geoPosition.lng,
+        collected: false,
+        type: 1,
+      }))
+    );
+  }
 
   for (const triangle of trianglesWithSound) {
     ctx.beginPath();
@@ -180,24 +188,33 @@ function tick() {
 
 let audioApi: AudioAPI;
 let angle: number = 0;
+let orientation = {
+  x: 0,
+  y: 0,
+  z: 0,
+};
+
 let geoPosition: GeoPosition = {
   lat: 50.7753,
   lng: 6.0839,
 };
 
 const updateSoundSources = () => {
-  console.log("angle", angle);
   soundSources = getSurroundingSoundSources(geoPosition, angle);
 };
 
 updateSoundSources();
 
 document.body.addEventListener(
-  "pointerup",
+  "click",
   () => {
     document.getElementById("intro").remove();
 
     addDeviceOrientationListener((event) => {
+      orientation.x = event.gamma; // gamma: left to right
+      orientation.y = event.beta; // beta: front back motion
+      orientation.z = event.alpha; // alpha: rotation around z-axis
+
       angle = -event.alpha;
       updateSoundSources();
     });
@@ -210,7 +227,7 @@ document.body.addEventListener(
     });
 
     audioApi = initAudioApi();
-    tick();
+    requestAnimationFrame(tick);
   },
   { once: true }
 );
