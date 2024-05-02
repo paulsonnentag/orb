@@ -7,8 +7,9 @@ import {
   findTriangles,
   Triangle,
   pointInTriangle,
+  getClosestNode,
 } from "./lib/graph";
-import { applyForces, PullForce } from "./lib/force-layout";
+import { applyForces } from "./lib/force-layout";
 import {
   addDeviceOrientationListener,
   addGeoPositionWatcher,
@@ -23,6 +24,8 @@ import { AudioAPI, main as initAudioApi } from "./sound/app";
 // GLOBAL STATE
 
 let soundSources: GeoSoundSource[] = [];
+
+let collectedSoundSources: Record<string, GeoSoundSource> = {};
 
 // SETUP CANVAS
 
@@ -52,7 +55,7 @@ resize();
 
 const nodes: Node[] = rawGraph.nodes.map(({ x, y, id }) => ({
   id,
-  position: new Vec2d((x - 0.5) * width, (y - 0.5) * width),
+  position: new Vec2d((x - 0.5) * 200, (y - 0.5) * 200),
   force: new Vec2d(0, 0),
 }));
 
@@ -73,32 +76,16 @@ const graph: Graph = {
 
 const triangles = findTriangles(graph);
 
-console.log(triangles);
-
 // RENDER
 
-let mouse = new Vec2d(0, 0);
-
-const canvasElement = document.getElementById("canvas");
-if (canvasElement) {
-  canvasElement.addEventListener("mousemove", (event) => {
-    mouse = new Vec2d(
-      event.clientX - window.innerWidth / 2,
-      event.clientY - window.innerHeight / 2
-    );
-  });
-} else {
-  console.error("Element with id 'canvas' not found");
-}
-
-let RADIUS = 150; // todo: scale this to the size of the orb
+let RADIUS = 120; // todo: scale this to the size of the orb
 
 const getDistortedDistance = (distance: number) => {
-  return Math.max(Math.log2(distance / 4) * 50, 0);
+  return Math.max(Math.log2(distance / 4) * 40, 0);
 };
 
 const getRadius = (distance: number) => {
-  return Math.max(5, (200 - distance / 2) / 10);
+  return Math.max(5, (150 - distance / 2) / 10);
 };
 
 function tick(t) {
@@ -110,7 +97,14 @@ function tick(t) {
 
   let attractor: Vec2d;
 
-  soundSources.forEach(({ angle, distance }, index) => {
+  soundSources.forEach((soundSource, index) => {
+    const { angle, distance, geoPosition } = soundSource;
+    // skip if we have already collected it
+    const key = `${geoPosition.lat}:${geoPosition.lng}`;
+    if (collectedSoundSources[key]) {
+      return;
+    }
+
     const distortedDistance = getDistortedDistance(distance);
 
     const x = Math.cos(angle) * (distortedDistance + RADIUS);
@@ -124,8 +118,14 @@ function tick(t) {
     const radius = getRadius(distance);
 
     ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-    ctx.fillStyle = "red";
+    ctx.fillStyle = `rgba(255, 0, 0, ${radius / 10})`;
     ctx.fill();
+
+    const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 10);
+
+    if (closestNode) {
+      collectedSoundSources[key] = soundSource;
+    }
   });
 
   if (audioApi) {
@@ -160,8 +160,7 @@ function tick(t) {
   });
 
   ctx.restore();
-
-  applyForces(graph, [attractor]);
+  applyForces(graph, attractor ? [attractor] : []);
   requestAnimationFrame(tick);
 }
 
@@ -182,13 +181,10 @@ let geoPosition: GeoPosition = {
 
 const updateSoundSources = () => {
   soundSources = getSurroundingSoundSources(geoPosition, angle);
-
-  console.log(soundSources);
 };
 
 updateSoundSources();
 
-/*
 document.body.addEventListener(
   "click",
   () => {
@@ -214,7 +210,7 @@ document.body.addEventListener(
     requestAnimationFrame(tick);
   },
   { once: true }
-);*/
+);
 
 // start without permissions
 document.getElementById("intro").remove();

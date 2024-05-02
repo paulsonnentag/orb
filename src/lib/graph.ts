@@ -96,6 +96,29 @@ export const getClosestTriangle = (point: Vec2d, triangles: Triangle[]) => {
   return closestTriangle;
 };
 
+export const getClosestNode = (
+  point: Vec2d,
+  nodes: Node[],
+  minDistance = Infinity
+) => {
+  let closestNode = null;
+
+  for (const node of nodes) {
+    // Calculate the distance from the node to the point
+    const distance = Math.sqrt(
+      (node.position.x - point.x) ** 2 + (node.position.y - point.y) ** 2
+    );
+
+    // Update the closest node if the current distance is smaller
+    if (distance < minDistance) {
+      closestNode = node;
+      minDistance = distance;
+    }
+  }
+
+  return closestNode;
+};
+
 export const getCentroid = (triangle: Triangle) => {
   // Calculate the centroid of the triangle
   return {
