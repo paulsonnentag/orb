@@ -43,6 +43,15 @@ const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 let width: number;
 let height: number;
 
+type DeletedSound = {
+  x: number;
+  y: number;
+  timestamp: number;
+  radius: number;
+};
+
+const deletedSounds: DeletedSound[] = [];
+
 function resize() {
   const dpi = window.devicePixelRatio;
   width = window.innerWidth;
@@ -196,19 +205,16 @@ function tick(t) {
     ctx.fill();
     // don't allow to pick up nodes when distortion is active
     if (!isDistortionActive) {
-      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 10);
+      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius);
 
       if (closestNode) {
-        const distance = Math.sqrt(
-          (closestNode.position.x - x) ** 2 + (closestNode.position.y - y) ** 2
-        );
-        console.log("collect", closestNode, distance);
-
         collectedSoundSources[key] = soundSource;
 
         blorpAtMs = t;
 
         const triangle = triangles.pop();
+        deletedSounds.push({ x, y, radius, timestamp: t });
+
         if (triangle) {
           capturedOscilators.push({
             triangle,
@@ -251,6 +257,21 @@ function tick(t) {
     audioApi.tick(t, inputs);
   }
 
+  // draw deleted sounds
+
+  for (const deletedSound of deletedSounds) {
+    deletedSound;
+
+    ctx.beginPath();
+    const radius = deletedSound.radius - (t - deletedSound.timestamp) / 10;
+
+    if (radius > 0) {
+      ctx.arc(deletedSound.x, deletedSound.y, radius, 0, 2 * Math.PI, false);
+      ctx.fillStyle = `hsla(0, 0%, 39%, ${radius / 10})`;
+      ctx.fill();
+    }
+  }
+
   for (const capturedOscilator of capturedOscilators) {
     const triangle = capturedOscilator.triangle;
 
@@ -275,7 +296,7 @@ function tick(t) {
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
     ctx.lineTo(triangle[2].position.x, triangle[2].position.y);
     ctx.closePath();
-    ctx.fillStyle = `rgba(255, 65, 54, ${amplitude})`;
+    ctx.fillStyle = `hsla(0, 100%, 62%, ${amplitude})`;
     ctx.fill();
   }
 
@@ -370,14 +391,13 @@ geoPosition = {
   lng: 6.0839,
 };
 
-*/
-/*setInterval(() => {
+setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
   geoPosition.lng -= 0.00002;
   updateSoundSources();
-}, 100); */
-
+}, 100);
+*/
 /*
 import L from "leaflet";
 

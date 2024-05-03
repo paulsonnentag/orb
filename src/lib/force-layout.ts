@@ -28,13 +28,17 @@ export const applyForces = (
     node.force = gravity;
   });
 
+  // apply force from attractos
   attractors.forEach((attractor) => {
     nodes.forEach((node) => {
       const direction = attractor.copy().sub(node.position);
       const distanceMagnitude = direction.mag();
-      const unitDirection = direction.copy().divScalar(distanceMagnitude);
-      const pullForce = unitDirection.multScalar(params.attractorForce * 0.05);
-      node.force.add(pullForce);
+
+      if (distanceMagnitude < 100) {
+        const unitDirection = direction.copy().divScalar(distanceMagnitude);
+        const pullForce = unitDirection.multScalar(params.attractorForce * 0.1);
+        node.force.add(pullForce);
+      }
     });
   });
 
@@ -86,6 +90,6 @@ export const applyForces = (
   // update position of nodes
   for (const node of nodes) {
     var vel = node.force.copy();
-    node.position.add(vel);
+    node.position.add(vel.divScalar(5));
   }
 };
