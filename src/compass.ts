@@ -502,6 +502,10 @@ document.body.addEventListener(
 
     audioApi = initAudioApi();
     requestAnimationFrame(tick);
+
+    try {
+      navigator.wakeLock.request("screen");
+    } catch {}
   },
   { once: true }
 );
