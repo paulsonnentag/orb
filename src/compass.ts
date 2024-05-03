@@ -20,6 +20,7 @@ import {
 } from "./lib/sound-source";
 import { AudioAPI, main as initAudioApi } from "./sound/app";
 import * as math from "./sound/math";
+import { input } from "./sound/audio";
 
 // GLOBAL STATE
 
@@ -132,13 +133,15 @@ const getRadius = (distance: number) => {
   return Math.max(5, (200 - distance / 2) / 10);
 };
 
+let blorpAtMs = -100000;
+let distortAtMs = -100000;
+let detuneAtMs = -100000;
+
 function tick(t) {
   let repulsionForce = 200;
   let attractorForce = 200;
-  let gravity = 0.2;
+  let gravity = 4.5;
   let isDistortionActive = false;
-  let blorpAtMs = -100000;
-  let distortAtMs = -100000;
 
   if (audioApi) {
     isDistortionActive = audioApi.state.distortion > 0.1;
@@ -146,11 +149,11 @@ function tick(t) {
     // change size of orb with amplitude
     repulsionForce =
       math.renormalized(audioApi.state.amplitude, 0, 1, 150, 200) +
-      (isDistortionActive ? 150 : 0);
+      (isDistortionActive ? 900 : 0);
 
     // make gravity funky if distortion happens
     gravity = isDistortionActive
-      ? math.renormalized(audioApi.state.distortion, 0, 1, 0.4, 0.5)
+      ? math.renormalized(audioApi.state.distortion, 0, 1, 4, 5)
       : 0.2;
   }
 
@@ -189,7 +192,8 @@ function tick(t) {
       isAbove &&
       ((soundSource.fragmentType.type === "oscillator" &&
         triangles.length > 0) ||
-        soundSource.fragmentType.type === "distortion")
+        soundSource.fragmentType.type === "distortion" ||
+        soundSource.fragmentType.type === "detune")
     ) {
       attractor = new Vec2d(x, y);
       isFirst = false;
@@ -217,6 +221,36 @@ function tick(t) {
         ctx.lineTo(
           x + sideLength * Math.cos(rotation + (Math.PI * 4) / 3),
           y + sideLength * Math.sin(rotation + (Math.PI * 4) / 3)
+        );
+        ctx.closePath();
+
+        ctx.fillStyle = `rgba(100, 100, 100, ${sideLength / 10})`;
+        ctx.fill();
+        break;
+      }
+
+      case "detune": {
+        ctx.beginPath();
+
+        const tWithOffset = t - soundSource.distance * 10;
+        const sideLength = getRadius(distance);
+        const rotation = (tWithOffset - soundSource.distance * 10) * 0.001; // rotation based on time
+
+        ctx.moveTo(
+          x + sideLength * Math.cos(rotation),
+          y + sideLength * Math.sin(rotation)
+        );
+        ctx.lineTo(
+          x + sideLength * Math.cos(rotation + Math.PI / 2),
+          y + sideLength * Math.sin(rotation + Math.PI / 2)
+        );
+        ctx.lineTo(
+          x + sideLength * Math.cos(rotation + Math.PI),
+          y + sideLength * Math.sin(rotation + Math.PI)
+        );
+        ctx.lineTo(
+          x + sideLength * Math.cos(rotation + (Math.PI * 3) / 2),
+          y + sideLength * Math.sin(rotation + (Math.PI * 3) / 2)
         );
         ctx.closePath();
 
@@ -259,6 +293,7 @@ function tick(t) {
 
         switch (soundSource.fragmentType.type) {
           case "oscillator": {
+            console.log("blurp");
             blorpAtMs = t;
 
             const triangle = triangles.pop();
@@ -272,26 +307,23 @@ function tick(t) {
             break;
           }
 
-          case "distortion":
+          case "distortion": {
+            console.log("distort");
             distortAtMs = t;
-
-            const triangle = triangles.pop();
-            if (triangle) {
-              deletedSounds.push({ x, y, radius, timestamp: t });
-              capturedOscilators.push({
-                triangle,
-                soundSource,
-              });
-            }
             break;
+          }
+
+          case "detune": {
+            console.log("detune");
+            detuneAtMs = t;
+            break;
+          }
         }
       }
     }
   });
 
   if (audioApi) {
-    //console.log(blorpAtMs);
-
     inputs = {
       orientation: { x: 0, y: 0, z: 0 },
       oscillators: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, index) =>
@@ -316,7 +348,7 @@ function tick(t) {
       ),
       effects: {
         blorpAtMs,
-        detuneAtMs: -100000,
+        detuneAtMs,
         distortAtMs,
         doBass: 0,
         doMelody: 0,
@@ -368,7 +400,7 @@ function tick(t) {
 
     let hue = 0;
     if (audioApi) {
-      hue = audioApi.state.transposition * 50;
+      hue = audioApi.state.detune * 100;
     }
 
     ctx.beginPath();
@@ -465,7 +497,6 @@ document.body.addEventListener(
   { once: true }
 );
 
-/*
 geoPosition = {
   lat: 50.7753,
   lng: 6.0839,
@@ -477,8 +508,6 @@ setInterval(() => {
   geoPosition.lng -= 0.00002;
   updateSoundSources();
 }, 100);
-
-*/
 
 /*
 import L from "leaflet";
