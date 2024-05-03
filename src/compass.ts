@@ -105,8 +105,11 @@ for (let i = 0; i < 3; i++) {
   capturedOscilators.push({
     triangle: triangles.pop(),
     soundSource: {
-      index: i,
-      isFlicker: false,
+      fragmentType: {
+        type: "oscillator",
+        index: i,
+        isFlicker: false,
+      },
       geoPosition: {
         lat: 0,
         lng: 0,
@@ -135,6 +138,7 @@ function tick(t) {
   let gravity = 0.2;
   let isDistortionActive = false;
   let blorpAtMs = -100000;
+  let distortAtMs = -100000;
 
   if (audioApi) {
     isDistortionActive = audioApi.state.distortion > 0.1;
@@ -163,22 +167,8 @@ function tick(t) {
   //updatePreviewMap();
 
   soundSources.forEach((soundSource) => {
-    let amplitude = 1;
-
-    if (audioApi) {
-      const { oscillators } = audioApi.state;
-      const oscillator = oscillators[soundSource.index];
-
-      amplitude = math.renormalized(
-        soundSource.isFlicker ? oscillator.flicker : oscillator.amplitude,
-        0,
-        1,
-        0.5,
-        1
-      );
-    }
-
     const { angle, distance, geoPosition } = soundSource;
+
     // skip if we have already collected it
     const key = `${geoPosition.lat}:${geoPosition.lng}`;
     if (collectedSoundSources[key]) {
@@ -186,52 +176,130 @@ function tick(t) {
     }
 
     const distortedDistance = getDistortedDistance(distance);
-
     const x = Math.cos(angle) * (distortedDistance + RADIUS);
     const y = Math.sin(angle) * (distortedDistance + RADIUS);
 
+    // sound sources are sorted by distance, so we gravitate towards
+    // the first sound source that is visible on screen
     let isSourceOnScreen = Math.abs(x) < width / 2 && Math.abs(y) < height / 2;
     let isAbove = y < 0;
-    if (isFirst && isSourceOnScreen && isAbove) {
+    if (
+      isFirst &&
+      isSourceOnScreen &&
+      isAbove &&
+      ((soundSource.fragmentType.type === "oscillator" &&
+        triangles.length > 0) ||
+        soundSource.fragmentType.type === "distortion")
+    ) {
       attractor = new Vec2d(x, y);
       isFirst = false;
     }
 
-    ctx.beginPath();
-    const radius = getRadius(distance);
+    let amplitude = 1;
+    let radius;
 
-    ctx.arc(x, y, radius * amplitude, 0, 2 * Math.PI, false);
-    ctx.fillStyle = `rgba(100, 100, 100, ${radius / 10})`;
-    ctx.fill();
-    // don't allow to pick up nodes when distortion is active
+    switch (soundSource.fragmentType.type) {
+      case "distortion": {
+        ctx.beginPath();
+
+        const tWithOffset = t - soundSource.distance * 10;
+        const sideLength = getRadius(distance);
+        const rotation = (tWithOffset - soundSource.distance * 10) * 0.001; // rotation based on time
+
+        ctx.moveTo(
+          x + sideLength * Math.cos(rotation),
+          y + sideLength * Math.sin(rotation)
+        );
+        ctx.lineTo(
+          x + sideLength * Math.cos(rotation + (Math.PI * 2) / 3),
+          y + sideLength * Math.sin(rotation + (Math.PI * 2) / 3)
+        );
+        ctx.lineTo(
+          x + sideLength * Math.cos(rotation + (Math.PI * 4) / 3),
+          y + sideLength * Math.sin(rotation + (Math.PI * 4) / 3)
+        );
+        ctx.closePath();
+
+        ctx.fillStyle = `rgba(100, 100, 100, ${sideLength / 10})`;
+        ctx.fill();
+        break;
+      }
+
+      case "oscillator":
+        if (audioApi) {
+          const { oscillators } = audioApi.state;
+          const oscillator = oscillators[soundSource.fragmentType.index];
+
+          amplitude = math.renormalized(
+            soundSource.fragmentType.isFlicker
+              ? oscillator.flicker
+              : oscillator.amplitude,
+            0,
+            1,
+            0.5,
+            1
+          );
+        }
+
+        ctx.beginPath();
+        radius = getRadius(distance) * amplitude;
+
+        ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+        ctx.fillStyle = `rgba(100, 100, 100, ${radius / 10})`;
+        ctx.fill();
+    }
+
+    // pick up logic
+    // don't allow item to be be picked up if distortion is active
     if (!isDistortionActive) {
-      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius);
+      const closestNode = getClosestNode(new Vec2d(x, y), nodes, 10);
 
       if (closestNode) {
         collectedSoundSources[key] = soundSource;
 
-        blorpAtMs = t;
+        switch (soundSource.fragmentType.type) {
+          case "oscillator": {
+            blorpAtMs = t;
 
-        const triangle = triangles.pop();
-        deletedSounds.push({ x, y, radius, timestamp: t });
+            const triangle = triangles.pop();
+            if (triangle) {
+              deletedSounds.push({ x, y, radius, timestamp: t });
+              capturedOscilators.push({
+                triangle,
+                soundSource,
+              });
+            }
+            break;
+          }
 
-        if (triangle) {
-          capturedOscilators.push({
-            triangle,
-            soundSource,
-          });
+          case "distortion":
+            distortAtMs = t;
+
+            const triangle = triangles.pop();
+            if (triangle) {
+              deletedSounds.push({ x, y, radius, timestamp: t });
+              capturedOscilators.push({
+                triangle,
+                soundSource,
+              });
+            }
+            break;
         }
       }
     }
   });
 
   if (audioApi) {
+    //console.log(blorpAtMs);
+
     inputs = {
       orientation: { x: 0, y: 0, z: 0 },
       oscillators: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, index) =>
         capturedOscilators.some(
           ({ soundSource }) =>
-            soundSource.index === index && !soundSource.isFlicker
+            soundSource.fragmentType.type === "oscillator" &&
+            soundSource.fragmentType.index === index &&
+            !soundSource.fragmentType.isFlicker
         )
           ? 1
           : 0
@@ -239,7 +307,9 @@ function tick(t) {
       flickers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, index) =>
         capturedOscilators.some(
           ({ soundSource }) =>
-            soundSource.index === index && soundSource.isFlicker
+            soundSource.fragmentType.type === "oscillator" &&
+            soundSource.fragmentType.index === index &&
+            soundSource.fragmentType.isFlicker
         )
           ? 1
           : 0
@@ -247,7 +317,7 @@ function tick(t) {
       effects: {
         blorpAtMs,
         detuneAtMs: -100000,
-        distortAtMs: -100000,
+        distortAtMs,
         doBass: 0,
         doMelody: 0,
         doPulse: 0,
@@ -275,13 +345,18 @@ function tick(t) {
   for (const capturedOscilator of capturedOscilators) {
     const triangle = capturedOscilator.triangle;
 
+    if (capturedOscilator.soundSource.fragmentType.type !== "oscillator") {
+      continue;
+    }
+
     let amplitude = 1;
     if (audioApi) {
       const { oscillators } = audioApi.state;
-      const oscillator = oscillators[capturedOscilator.soundSource.index];
+      const oscillator =
+        oscillators[capturedOscilator.soundSource.fragmentType.index];
 
       amplitude = math.renormalized(
-        capturedOscilator.soundSource.isFlicker
+        capturedOscilator.soundSource.fragmentType.isFlicker
           ? oscillator.flicker
           : oscillator.amplitude,
         0,
@@ -291,12 +366,17 @@ function tick(t) {
       );
     }
 
+    let hue = 0;
+    if (audioApi) {
+      hue = audioApi.state.transposition * 50;
+    }
+
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
     ctx.lineTo(triangle[2].position.x, triangle[2].position.y);
     ctx.closePath();
-    ctx.fillStyle = `hsla(0, 100%, 62%, ${amplitude})`;
+    ctx.fillStyle = `hsla(${hue}, 100%, 62%, ${amplitude})`;
     ctx.fill();
   }
 
@@ -397,7 +477,9 @@ setInterval(() => {
   geoPosition.lng -= 0.00002;
   updateSoundSources();
 }, 100);
+
 */
+
 /*
 import L from "leaflet";
 

@@ -44,12 +44,30 @@ export function createGeoLocations(
   return geoPositions;
 }
 
+type SoundFragmentTypeDetune = {
+  type: "detune";
+};
+
+type SoundFragmentTypeDistortion = {
+  type: "distortion";
+};
+
+type SoundFragmentTypeOscilator = {
+  type: "oscillator";
+  index: number;
+  isFlicker: boolean;
+};
+
+type SoundFragmentType =
+  | SoundFragmentTypeDetune
+  | SoundFragmentTypeDistortion
+  | SoundFragmentTypeOscilator;
+
 export type GeoSoundSource = {
   geoPosition: GeoPosition;
   distance: number;
   angle: number;
-  isFlicker: boolean;
-  index: number;
+  fragmentType: SoundFragmentType;
 };
 
 export function getSurroundingSoundSources(
@@ -79,9 +97,28 @@ export function getSurroundingSoundSources(
         geoPosition: { lat: marker.lat, lng: marker.lng },
         distance: distanceMeters,
         angle: relativeAngle,
-        index: Math.floor(random(seed + 1) * 12),
-        isFlicker: random(seed + 2) > 0.5,
+        fragmentType: getRandomSoundFragmentType(seed),
       };
     })
     .sort((a, b) => a.distance - b.distance);
+}
+
+function getRandomSoundFragmentType(seed: string): SoundFragmentType {
+  const value = random(seed + 1);
+
+  if (value < 0.8) {
+    return {
+      type: "oscillator",
+      index: Math.floor(random(seed + 2) * 12),
+      isFlicker: random(seed + 3) > 0.5,
+    };
+  }
+
+  if (value >= 0.8 && value <= 0.9) {
+    return { type: "detune" };
+  }
+
+  if (value > 0.9) {
+    return { type: "distortion" };
+  }
 }

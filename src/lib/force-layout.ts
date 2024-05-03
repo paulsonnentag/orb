@@ -57,9 +57,14 @@ export const applyForces = (
   if (audioState) {
     // apply oscilator force
     for (const oscilator of capturedOscilators) {
+      if (oscilator.soundSource.fragmentType.type !== "oscillator") {
+        continue;
+      }
+
       const centroid = getCentroid(oscilator.triangle);
-      const oscillator = audioState.oscillators[oscilator.soundSource.index];
-      const amplitude = oscilator.soundSource.isFlicker
+      const oscillator =
+        audioState.oscillators[oscilator.soundSource.fragmentType.index];
+      const amplitude = oscilator.soundSource.fragmentType.isFlicker
         ? oscillator.flicker
         : oscillator.amplitude;
 
