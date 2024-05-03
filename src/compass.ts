@@ -120,6 +120,8 @@ function tick(t) {
 
   let isFirst = true;
 
+  //updatePreviewMap();
+
   soundSources.forEach((soundSource, index) => {
     let oscilatorAmplitude = 1;
 
@@ -147,7 +149,8 @@ function tick(t) {
     const y = Math.sin(angle) * (distortedDistance + RADIUS);
 
     let isSourceOnScreen = Math.abs(x) < width / 2 && Math.abs(y) < height / 2;
-    if (isFirst && isSourceOnScreen) {
+    let isAbove = y < 0;
+    if (isFirst && isSourceOnScreen && isAbove) {
       attractor = new Vec2d(x, y);
       isFirst = false;
     }
@@ -269,3 +272,54 @@ setInterval(() => {
   geoPosition.lng -= 0.000002;
   updateSoundSources();
 }, 100);
+
+/*
+import L from "leaflet";
+
+const container = document.createElement("div");
+
+container.style.position = "absolute";
+container.id = "preview";
+container.style.bottom = "0px";
+container.style.right = "0px";
+container.style.width = "500px";
+container.style.height = "500px";
+
+document.body.append(container);
+
+// Create a map in the bottom right corner
+var previewMap = L.map("preview", {
+  position: "absolute",
+  bottom: "0",
+  right: "0",
+}).setView([geoPosition.lat, geoPosition.lng], 20);
+
+// Add OpenStreetMap tile layer to the map
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(previewMap);
+
+// Create an array to store the markers
+var soundSourceMarkers = [];
+
+// Function to update the preview map and markers
+function updatePreviewMap() {
+  // Clear existing markers
+  for (var i = 0; i < soundSourceMarkers.length; i++) {
+    previewMap.removeLayer(soundSourceMarkers[i]);
+  }
+  soundSourceMarkers = [];
+
+  // Update the center of the map
+  previewMap.setView([geoPosition.lat, geoPosition.lng], 20);
+
+  // Add new markers for each sound source
+  for (var i = 0; i < soundSources.length; i++) {
+    var marker = L.marker([
+      soundSources[i].geoPosition.lat,
+      soundSources[i].geoPosition.lng,
+    ]).addTo(previewMap);
+    soundSourceMarkers.push(marker);
+  }
+}*/
