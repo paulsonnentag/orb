@@ -175,19 +175,19 @@ function tick(t) {
   });
 
   if (audioApi) {
-    audioApi.tick(
-      t,
-      orientation,
-      soundSources.slice(0, 5).map((source) => {
-        const key = `${source.geoPosition.lat}:${source.geoPosition.lng}`;
-        return {
-          lat: source.geoPosition.lat,
-          lon: source.geoPosition.lng,
-          collected: !!collectedSoundSources[key],
-          type: 1,
-        };
-      })
-    );
+    audioApi.tick(t, {
+      orientation: { x: 0, y: 0, z: 0 },
+      oscillators: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      flickers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      effects: {
+        blorpAtMs: -100000,
+        detuneAtMs: -100000,
+        distortAtMs: -100000,
+        doBass: 0,
+        doMelody: 0,
+        doPulse: 0,
+      },
+    });
   }
 
   for (const triangle of filledTriangles) {

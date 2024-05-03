@@ -1,6 +1,6 @@
 import * as math from "./math"
 
-const fftSize = 32768
+const fftSize = window.innerWidth < 500 ? 256 : 32768
 
 export let context: AudioContext
 export let sampleRate: number
@@ -12,7 +12,8 @@ export function setupAudio(runAnalysis: boolean) {
   context = new window.AudioContext()
   sampleRate = context.sampleRate
 
-  input = new GainNode(context, { gain: 1 })
+  input = new GainNode(context, { gain: 0 })
+  input.gain.linearRampToValueAtTime(1, context.currentTime + 1)
 
   if (runAnalysis) {
     analyser = context.createAnalyser()
