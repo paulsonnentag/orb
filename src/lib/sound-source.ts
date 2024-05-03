@@ -1,6 +1,9 @@
 import { round, random } from "./math";
 
-export type GeoPosition = { lat: number; lng: number };
+export type GeoPosition = {
+  lat: number;
+  lng: number;
+};
 
 export function createGeoLocations(
   center: GeoPosition,
@@ -27,9 +30,9 @@ export function createGeoLocations(
 
       const value = random(seed);
       const latShift = 0; // (random(`${markerLat}:${markerLng}1`) - 0.5) / 10000;
-      const lngShift = 0; //(random(`${markerLat}:${markerLng}2`) - 9, 5) / 10000;
+      const lngShift = 0; // (random(`${markerLat}:${markerLng}2`) - 9, 5) / 10000;
 
-      if (value > 0.7) {
+      if (value > 0.5) {
         geoPositions.push({
           lat: markerLat + latShift,
           lng: markerLng + lngShift,
@@ -45,6 +48,8 @@ export type GeoSoundSource = {
   geoPosition: GeoPosition;
   distance: number;
   angle: number;
+  isFlicker: boolean;
+  index: number;
 };
 
 export function getSurroundingSoundSources(
@@ -68,10 +73,14 @@ export function getSurroundingSoundSources(
       // Adjust the angle relative to the input angle
       const relativeAngle = markerAngle - (angle / 180) * Math.PI;
 
+      const seed = `${round(marker.lat, 6)}:${round(marker.lng, 6)}`;
+
       return {
         geoPosition: { lat: marker.lat, lng: marker.lng },
         distance: distanceMeters,
         angle: relativeAngle,
+        index: Math.floor(random(seed + 1) * 12),
+        isFlicker: random(seed + 2) > 0.5,
       };
     })
     .sort((a, b) => a.distance - b.distance);

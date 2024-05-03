@@ -27,7 +27,14 @@ let soundSources: GeoSoundSource[] = [];
 
 let collectedSoundSources: Record<string, GeoSoundSource> = {};
 
-let filledTriangles: Triangle[] = [];
+let inputs;
+
+export type CapturedOscilator = {
+  triangle: Triangle;
+  soundSource: GeoSoundSource;
+};
+
+const capturedOscilators: CapturedOscilator[] = (window.$captured = []);
 
 // SETUP CANVAS
 
@@ -77,6 +84,29 @@ const graph: Graph = {
 };
 
 const triangles = findTriangles(graph);
+for (let i = triangles.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * i);
+  const temp = triangles[i];
+  triangles[i] = triangles[j];
+  triangles[j] = temp;
+}
+
+// pre capture some triangles
+for (let i = 0; i < 3; i++) {
+  capturedOscilators.push({
+    triangle: triangles.pop(),
+    soundSource: {
+      index: i,
+      isFlicker: false,
+      geoPosition: {
+        lat: 0,
+        lng: 0,
+      },
+      distance: 0,
+      angle: 0,
+    },
+  });
+}
 
 // RENDER
 
@@ -123,13 +153,15 @@ function tick(t) {
 
   //updatePreviewMap();
 
-  soundSources.forEach((soundSource, index) => {
-    let oscilatorAmplitude = 1;
+  soundSources.forEach((soundSource) => {
+    let amplitude = 1;
 
     if (audioApi) {
       const { oscillators } = audioApi.state;
-      oscilatorAmplitude = math.renormalized(
-        oscillators[index % oscillators.length].amplitude,
+      const oscillator = oscillators[soundSource.index];
+
+      amplitude = math.renormalized(
+        soundSource.isFlicker ? oscillator.flicker : oscillator.amplitude,
         0,
         1,
         0.5,
@@ -159,8 +191,8 @@ function tick(t) {
     ctx.beginPath();
     const radius = getRadius(distance);
 
-    ctx.arc(x, y, radius * oscilatorAmplitude, 0, 2 * Math.PI, false);
-    ctx.fillStyle = `rgba(255, 65, 54, ${radius / 10})`;
+    ctx.arc(x, y, radius * amplitude, 0, 2 * Math.PI, false);
+    ctx.fillStyle = `rgba(100, 100, 100, ${radius / 10})`;
     ctx.fill();
     // don't allow to pick up nodes when distortion is active
     if (!isDistortionActive) {
@@ -178,17 +210,34 @@ function tick(t) {
 
         const triangle = triangles.pop();
         if (triangle) {
-          filledTriangles.push(triangle);
+          capturedOscilators.push({
+            triangle,
+            soundSource,
+          });
         }
       }
     }
   });
 
   if (audioApi) {
-    audioApi.tick(t, {
+    inputs = {
       orientation: { x: 0, y: 0, z: 0 },
-      oscillators: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      flickers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      oscillators: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, index) =>
+        capturedOscilators.some(
+          ({ soundSource }) =>
+            soundSource.index === index && !soundSource.isFlicker
+        )
+          ? 1
+          : 0
+      ),
+      flickers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].map((_, index) =>
+        capturedOscilators.some(
+          ({ soundSource }) =>
+            soundSource.index === index && soundSource.isFlicker
+        )
+          ? 1
+          : 0
+      ),
       effects: {
         blorpAtMs,
         detuneAtMs: -100000,
@@ -197,16 +246,36 @@ function tick(t) {
         doMelody: 0,
         doPulse: 0,
       },
-    });
+    };
+
+    audioApi.tick(t, inputs);
   }
 
-  for (const triangle of filledTriangles) {
+  for (const capturedOscilator of capturedOscilators) {
+    const triangle = capturedOscilator.triangle;
+
+    let amplitude = 1;
+    if (audioApi) {
+      const { oscillators } = audioApi.state;
+      const oscillator = oscillators[capturedOscilator.soundSource.index];
+
+      amplitude = math.renormalized(
+        capturedOscilator.soundSource.isFlicker
+          ? oscillator.flicker
+          : oscillator.amplitude,
+        0,
+        1,
+        0.5,
+        1
+      );
+    }
+
     ctx.beginPath();
     ctx.moveTo(triangle[0].position.x, triangle[0].position.y);
     ctx.lineTo(triangle[1].position.x, triangle[1].position.y);
     ctx.lineTo(triangle[2].position.x, triangle[2].position.y);
     ctx.closePath();
-    ctx.fillStyle = "#FF4136";
+    ctx.fillStyle = `rgba(255, 65, 54, ${amplitude})`;
     ctx.fill();
   }
 
@@ -218,11 +287,20 @@ function tick(t) {
   });
 
   ctx.restore();
-  applyForces(graph, attractor ? [attractor] : [], {
-    repulsionForce,
-    attractorForce,
-    gravity,
-  });
+
+  // drawCircles(audioApi.state, t);
+
+  applyForces(
+    graph,
+    attractor ? [attractor] : [],
+    {
+      repulsionForce,
+      attractorForce,
+      gravity,
+    },
+    capturedOscilators,
+    audioApi.state
+  );
   requestAnimationFrame(tick);
 }
 
@@ -256,8 +334,6 @@ const updateSoundSources = () => {
       }
     });
   }
-
-  console.log("soundsources", soundSources);
 };
 
 document.body.addEventListener(
@@ -293,16 +369,14 @@ geoPosition = {
   lat: 50.7753,
   lng: 6.0839,
 };
-*/
 
-/*
-setInterval(() => {
+*/
+/*setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
-  geoPosition.lng -= 0.000002;
+  geoPosition.lng -= 0.00002;
   updateSoundSources();
-}, 100);
-*/
+}, 100); */
 
 /*
 import L from "leaflet";
@@ -354,3 +428,107 @@ function updatePreviewMap() {
     soundSourceMarkers.push(marker);
   }
 }*/
+
+/*
+function drawCircles(state: AudioState, ms: number) {
+  state.oscillators.forEach((osc, i) => {
+    const o = inputs.oscillators[i];
+    const f = inputs.flickers[i];
+    addCircle(
+      `osc ${i} amp`,
+      1,
+      i,
+      osc.amplitude,
+      o,
+      () => (inputs.oscillators[i] = o == 1 ? 0 : 1)
+    );
+    addCircle(
+      `osc ${i} flicker`,
+      2,
+      i,
+      osc.flicker,
+      f,
+      () => (inputs.flickers[i] = f == 1 ? 0 : 1)
+    );
+  });
+
+  const fx = inputs.effects;
+  addCircle("active", 0, 0, state.active, -1);
+  addCircle("amplitude", 0, 1, state.amplitude, -1);
+  addCircle("chord", 0, 2, state.chord, -1);
+  addCircle("flicker", 0, 3, state.flicker, -1);
+  addCircle("transposition", 0, 4, state.transposition, -1);
+
+  addCircle(
+    "chorus",
+    0,
+    6,
+    state.chorus,
+    state.chorus,
+    () => (fx.blorpAtMs = ms)
+  );
+  addCircle(
+    "detune",
+    0,
+    7,
+    state.detune,
+    state.detune,
+    () => (fx.detuneAtMs = ms)
+  );
+  addCircle(
+    "distortion",
+    0,
+    8,
+    state.distortion,
+    state.distortion,
+    () => (fx.distortAtMs = ms)
+  );
+  addCircle(
+    "bass",
+    0,
+    9,
+    state.bass.amplitude,
+    fx.doBass,
+    () => (fx.doBass = fx.doBass == 0 ? 1 : 0)
+  );
+  addCircle(
+    "melody",
+    0,
+    10,
+    state.melody.amplitude,
+    fx.doMelody,
+    () => (fx.doMelody = fx.doMelody == 0 ? 1 : 0)
+  );
+  addCircle(
+    "pulse",
+    0,
+    11,
+    state.pulse,
+    fx.doPulse,
+    () => (fx.doPulse = fx.doPulse == 0 ? 1 : 0)
+  );
+}
+
+function addCircle(
+  name: string,
+  x: number,
+  y: number,
+  size: number,
+  color: number,
+  cb?: Function
+) {
+  ctx.beginPath();
+  ctx.fillStyle = "#0001";
+  const cx = 25 + x * 150;
+  const cy = 25 + y * 45;
+  const r = 20;
+  ctx.arc(cx, cy, r, 0, math.TAU);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.fillStyle =
+    color < 0 ? "#fff" : color > 0.01 ? "lch(65% 132 178)" : "#333";
+  ctx.arc(cx, cy, Math.max(0, r * size), 0, math.TAU);
+  ctx.fill();
+  ctx.fillText(name, 50 + x * 150, cy);
+}
+*/

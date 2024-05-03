@@ -121,18 +121,13 @@ export const getClosestNode = (
 
 export const getCentroid = (triangle: Triangle) => {
   // Calculate the centroid of the triangle
-  return {
-    x:
-      (triangle[0].position.x +
-        triangle[1].position.x +
-        triangle[2].position.x) /
+  return new Vec2d(
+    (triangle[0].position.x + triangle[1].position.x + triangle[2].position.x) /
       3,
-    y:
-      (triangle[0].position.y +
-        triangle[1].position.y +
-        triangle[2].position.y) /
-      3,
-  };
+
+    (triangle[0].position.y + triangle[1].position.y + triangle[2].position.y) /
+      3
+  );
 };
 
 export class Vec2d {

@@ -1,4 +1,6 @@
-import { Graph, Vec2d, Node } from "./graph";
+import { AudioState } from "../sound/app";
+import { CapturedOscilator } from "../compass";
+import { Graph, Vec2d, Node, getCentroid } from "./graph";
 
 // adapted from: https://editor.p5js.org/vgarciasc/sketches/0lAcb1WI8
 
@@ -16,7 +18,9 @@ type ForceParams = {
 export const applyForces = (
   { nodes, links }: Graph,
   attractors: Vec2d[],
-  params: ForceParams
+  params: ForceParams,
+  capturedOscilators: CapturedOscilator[],
+  audioState: AudioState
 ) => {
   // apply force towards centre
   nodes.forEach((node) => {
@@ -43,6 +47,25 @@ export const applyForces = (
       force.multScalar(params.repulsionForce);
       nodes[i].force.add(force.copy().multScalar(-1));
       nodes[j].force.add(force);
+    }
+  }
+
+  if (audioState) {
+    // apply oscilator force
+    for (const oscilator of capturedOscilators) {
+      const centroid = getCentroid(oscilator.triangle);
+      const oscillator = audioState.oscillators[oscilator.soundSource.index];
+      const amplitude = oscilator.soundSource.isFlicker
+        ? oscillator.flicker
+        : oscillator.amplitude;
+
+      for (const node of oscilator.triangle) {
+        const position = node.position;
+        const direction = centroid.copy().sub(position);
+        const force = direction.divScalar(direction.mag() * direction.mag());
+        force.multScalar(params.repulsionForce);
+        node.force.add(force.copy().multScalar(-1 * amplitude));
+      }
     }
   }
 
