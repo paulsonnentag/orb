@@ -4,7 +4,7 @@ export type GeoPosition = { lat: number; lng: number };
 
 export function createGeoLocations(
   center: GeoPosition,
-  n: number = 20
+  n: number = 30
 ): GeoPosition[] {
   var lat = center.lat;
   var lng = center.lng;

@@ -29,7 +29,7 @@ export const applyForces = (
       const direction = attractor.copy().sub(node.position);
       const distanceMagnitude = direction.mag();
       const unitDirection = direction.copy().divScalar(distanceMagnitude);
-      const pullForce = unitDirection.multScalar(params.attractorForce * 0.075);
+      const pullForce = unitDirection.multScalar(params.attractorForce * 0.05);
       node.force.add(pullForce);
     });
   });

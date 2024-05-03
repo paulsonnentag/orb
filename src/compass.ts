@@ -80,14 +80,14 @@ const triangles = findTriangles(graph);
 
 // RENDER
 
-let RADIUS = 120;
+let RADIUS = 75;
 
 const getDistortedDistance = (distance: number) => {
-  return Math.max(Math.log2(distance / 4) * 40, 0);
+  return Math.max(Math.log2(distance / 4) * 35, 0);
 };
 
 const getRadius = (distance: number) => {
-  return Math.max(5, (150 - distance / 2) / 10);
+  return Math.max(5, (200 - distance / 2) / 10);
 };
 
 function tick(t) {
@@ -95,6 +95,7 @@ function tick(t) {
   let attractorForce = 200;
   let gravity = 0.2;
   let isDistortionActive = false;
+  let blorpAtMs = -100000;
 
   if (audioApi) {
     isDistortionActive = audioApi.state.distortion > 0.1;
@@ -125,7 +126,7 @@ function tick(t) {
   soundSources.forEach((soundSource, index) => {
     let oscilatorAmplitude = 1;
 
-    if (audioApi && false) {
+    if (audioApi) {
       const { oscillators } = audioApi.state;
       oscilatorAmplitude = math.renormalized(
         oscillators[index % oscillators.length].amplitude,
@@ -163,10 +164,17 @@ function tick(t) {
     ctx.fill();
     // don't allow to pick up nodes when distortion is active
     if (!isDistortionActive) {
-      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius);
+      const closestNode = getClosestNode(new Vec2d(x, y), nodes, radius + 10);
 
       if (closestNode) {
+        const distance = Math.sqrt(
+          (closestNode.position.x - x) ** 2 + (closestNode.position.y - y) ** 2
+        );
+        console.log("collect", closestNode, distance);
+
         collectedSoundSources[key] = soundSource;
+
+        blorpAtMs = t;
 
         const triangle = triangles.pop();
         if (triangle) {
@@ -182,7 +190,7 @@ function tick(t) {
       oscillators: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       flickers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       effects: {
-        blorpAtMs: -100000,
+        blorpAtMs,
         detuneAtMs: -100000,
         distortAtMs: -100000,
         doBass: 0,
@@ -228,19 +236,32 @@ let orientation = {
   z: 0,
 };
 
-let geoPosition: GeoPosition = {
-  lat: 50.7753,
-  lng: 6.0839,
-};
+let geoPosition: GeoPosition;
+
+let intialLoad = true;
+
+const MIN_INITIAL_DISTANCE = 40;
 
 const updateSoundSources = () => {
   soundSources = getSurroundingSoundSources(geoPosition, angle);
+
+  if (intialLoad && soundSources.length > 0) {
+    intialLoad = false;
+
+    // remove sounds that are very close to the current position so they would be immediately captured
+    soundSources.forEach((soundSource) => {
+      if (soundSource.distance < MIN_INITIAL_DISTANCE) {
+        const key = `${soundSource.geoPosition.lat}:${soundSource.geoPosition.lng}`;
+        collectedSoundSources[key] = soundSource;
+      }
+    });
+  }
+
+  console.log("soundsources", soundSources);
 };
 
-updateSoundSources();
-
 document.body.addEventListener(
-  "click",
+  "pointerup",
   () => {
     document.getElementById("intro").remove();
 
@@ -258,6 +279,7 @@ document.body.addEventListener(
         lat: newGeoPosition.coords.latitude,
         lng: newGeoPosition.coords.longitude,
       };
+      updateSoundSources();
     });
 
     audioApi = initAudioApi();
@@ -266,12 +288,21 @@ document.body.addEventListener(
   { once: true }
 );
 
+/*
+geoPosition = {
+  lat: 50.7753,
+  lng: 6.0839,
+};
+*/
+
+/*
 setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
   geoPosition.lng -= 0.000002;
   updateSoundSources();
 }, 100);
+*/
 
 /*
 import L from "leaflet";
