@@ -1,4 +1,4 @@
-import { random } from "./random";
+import { round, random } from "./math";
 
 export type GeoPosition = { lat: number; lng: number };
 
@@ -23,9 +23,11 @@ export function createGeoLocations(
       var markerLat = lat - latOffset - (n / 2) * latStep + i * latStep;
       var markerLng = lng - lngOffset - (n / 2) * lngStep + j * lngStep;
 
-      const value = random(`${markerLat}:${markerLng}`);
-      const latShift = (random(`${markerLat}:${markerLng}1`) - 0.5) / 10000;
-      const lngShift = (random(`${markerLat}:${markerLng}2`) - 9, 5) / 10000;
+      const seed = `${round(markerLat, 6)}:${round(markerLng, 6)}`;
+
+      const value = random(seed);
+      const latShift = 0; // (random(`${markerLat}:${markerLng}1`) - 0.5) / 10000;
+      const lngShift = 0; //(random(`${markerLat}:${markerLng}2`) - 9, 5) / 10000;
 
       if (value > 0.7) {
         geoPositions.push({

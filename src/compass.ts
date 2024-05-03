@@ -6,7 +6,6 @@ import {
   Link,
   findTriangles,
   Triangle,
-  pointInTriangle,
   getClosestNode,
 } from "./lib/graph";
 import { applyForces } from "./lib/force-layout";
@@ -124,7 +123,7 @@ function tick(t) {
   soundSources.forEach((soundSource, index) => {
     let oscilatorAmplitude = 1;
 
-    if (audioApi) {
+    if (audioApi && false) {
       const { oscillators } = audioApi.state;
       oscilatorAmplitude = math.renormalized(
         oscillators[index % oscillators.length].amplitude,
@@ -264,9 +263,9 @@ document.body.addEventListener(
   { once: true }
 );
 
-/*setInterval(() => {
+setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
   // 20 cm is 0.002 degrees
-  geoPosition.lng -= 0.00002;
+  geoPosition.lng -= 0.000002;
   updateSoundSources();
-}, 100);*/
+}, 100);

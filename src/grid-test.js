@@ -5,7 +5,7 @@ import {
 
 import L from "leaflet";
 
-var map = L.map("root").setView([51.505, -0.09], 20);
+var map = L.map("root").setView([50.7753, 6.0839], 20);
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution:
@@ -21,6 +21,13 @@ function createMarkersFromPositions(geoPositions) {
     var marker = L.marker([geoPositions[i].lat, geoPositions[i].lng]).addTo(
       map
     );
+
+    marker.on("click", function (e) {
+      var markerLat = this.getLatLng().lat;
+      var markerLng = this.getLatLng().lng;
+      console.log([markerLat, markerLng]);
+    });
+
     markers.push(marker);
   }
 
