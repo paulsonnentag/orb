@@ -169,6 +169,9 @@ function tick(t) {
 
   //updatePreviewMap();
 
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-over";
+
   soundSources.forEach((soundSource) => {
     const { angle, distance, geoPosition } = soundSource;
 
@@ -279,7 +282,7 @@ function tick(t) {
         radius = getRadius(distance) * amplitude;
 
         ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-        ctx.fillStyle = `rgba(100, 100, 100, ${radius / 10})`;
+        ctx.fillStyle = `hsla(0, 0%, ${50 * amplitude}%, ${radius / 10})`;
         ctx.fill();
     }
 
@@ -322,6 +325,8 @@ function tick(t) {
       }
     }
   });
+
+  ctx.restore();
 
   if (audioApi) {
     inputs = {
@@ -400,7 +405,7 @@ function tick(t) {
 
     let hue = 0;
     if (audioApi) {
-      hue = audioApi.state.detune * 100;
+      hue = audioApi.state.detune * 360 + audioApi.state.chord * 360;
     }
 
     ctx.beginPath();
@@ -413,7 +418,11 @@ function tick(t) {
   }
 
   links.forEach(({ from, to }) => {
+    const brightness =
+      Math.abs(Math.sin(from.position.x + to.position.y)) * 0.5 + 0.25;
+
     ctx.beginPath();
+    ctx.strokeStyle = `rgb(255, 255, 255, ${brightness})`;
     ctx.moveTo(from.position.x, from.position.y);
     ctx.lineTo(to.position.x, to.position.y);
     ctx.stroke();
@@ -497,10 +506,12 @@ document.body.addEventListener(
   { once: true }
 );
 
+/*
 geoPosition = {
   lat: 50.7753,
   lng: 6.0839,
 };
+
 
 setInterval(() => {
   // Assuming 1 degree of latitude is approximately 111,139 meters
@@ -508,6 +519,7 @@ setInterval(() => {
   geoPosition.lng -= 0.00002;
   updateSoundSources();
 }, 100);
+*/
 
 /*
 import L from "leaflet";
